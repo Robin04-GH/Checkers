@@ -1,0 +1,19 @@
+# File per ignorare cartelle/file nel repo Git
+
+# Ignora l'ambiente virtuale
+env/
+
+# Ignora file temporanei di Python
+*.pyc
+__pycache__/
+
+# Ignora file di log
+*.log
+
+# Ignora file di configurazione privati
+*.env
+
+# Ignora file di build
+build/
+dist/
+*.egg-info/
