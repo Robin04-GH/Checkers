@@ -19,13 +19,13 @@ class Checkerboard():
         P_DARK = 1
 
     # Inner class, used to define constants that represent the players' 
-    # pawns or checkers in the cells of the checkerboard
+    # 'man' or 'king' in the cells of the checkerboard
     class EnumCheckerboardCells(Enum):
         C_EMPTY = 0
-        C_PAWN_LIGHT = 1
-        C_CHECKER_LIGHT = 2
-        C_PAWN_DARK = 3
-        C_CHECKER_DARK = 4
+        C_MAN_LIGHT = 1
+        C_KING_LIGHT = 2
+        C_MAN_DARK = 3
+        C_KING_DARK = 4
 
     def __init__(self, graphics: GraphicsInterface):
         """
