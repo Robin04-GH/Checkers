@@ -1,3 +1,5 @@
+from checkers.constant import MAX_DARK_CELLS, MAX_MAN
+
 class pieces():
     """
     Class containing the game pieces of both players as a reverse 
@@ -7,6 +9,8 @@ class pieces():
     When a 'man' is promoted to a 'king', 12 is added to the ID.
     Player 1 has positive IDs, player 2 has negative IDs.
     """
+
+    MAX_MAN_X2 = MAX_MAN + MAX_MAN
 
     def __init__(self):
         """
@@ -21,28 +25,28 @@ class pieces():
 
     # N.B.: with the exception you don't need to return a bool !
     def isValidCell(self, idDarkCell:int):
-        if not (0 <= idDarkCell < 32):
-            raise ValueError(f"Specified cell {idDarkCell} is out of bounds!")
+        if not (0 <= idDarkCell < MAX_DARK_CELLS):
+            raise ValueError(f"Specified cell ID {idDarkCell} is out of bounds !")
         
     # N.B.: with the exception you don't need to return a bool !
     def isValidPiece(self, idPiece:int):
-        if not (1 <= abs(idPiece) <= 24):
-            raise ValueError(f"Invalid piece ID: {idPiece}. Useful interval abs[1..24] !")
+        if not (1 <= abs(idPiece) <= self.MAX_MAN_X2):
+            raise ValueError(f"Specified piece ID {idPiece} is out of bounds !")
 
     # N.B.: with the exception you don't need to return a bool !
     def isEmptyCell(self, idDarkCell:int):
         if idDarkCell not in self.pieces:
-            raise KeyError(f"Cell {idDarkCell} empty !")
+            raise KeyError(f"Cell {idDarkCell} is empty !")
 
     # N.B.: with the exception you don't need to return a bool !
-    def isNotEmptyCell(self, idDarkCell:int):
+    def isBusyCell(self, idDarkCell:int):
         if idDarkCell in self.pieces:
             raise KeyError(f"Cell {idDarkCell} already contains a piece !")
 
     def addPieces(self, idDarkCell:int, idPiece:int):
         self.isValidCell(idDarkCell)
         self.isValidPiece(idPiece)
-        self.isNotEmptyCell(idDarkCell)
+        self.isBusyCell(idDarkCell)
 
         self.pieces[idDarkCell] = idPiece
 
@@ -59,12 +63,12 @@ class pieces():
         # check for the presence of a piece on the original cell
         self.isEmptyCell(originCell)        
         # check for absence of a piece on the target cell
-        self.isNotEmptyCell(targetCell)
+        self.isBusyCell(targetCell)
         
         self.addPieces(targetCell, self.pieces[originCell])
         self.removePieces(originCell)
 
-    def findIdPiece(self, idDarkCell:int)->int:
+    def getIdPiece(self, idDarkCell:int)->int:
         self.isValidCell(idDarkCell)
 
         # if the cell contains no pieces it returns zero
@@ -74,15 +78,15 @@ class pieces():
         # check for the presence of a piece on the specified cell
         self.isEmptyCell(idDarkCell)        
 
-        idPiece = self.findIdPiece(idDarkCell)
+        idPiece = self.getIdPiece(idDarkCell)
 
         self.isValidPiece(idPiece)
         
         # promotion to King
-        if 1 <= idPiece <= 12:
-            idPiece += 12
-        elif -1 >= idPiece >= -12:
-            idPiece -= 12
+        if idPiece > 0:
+            idPiece += MAX_MAN
+        elif idPiece < 0:
+            idPiece -= MAX_MAN
         else:
             raise ValueError(f"The piece ID {idPiece} is already a king and cannot be promoted yet !")
 

@@ -1,19 +1,22 @@
-# File per ignorare cartelle/file nel repo Git
+# File to ignore folders/files in Git repo
 
-# Ignora l'ambiente virtuale
+# Ignore the virtual environment
 env/
 
-# Ignora file temporanei di Python
+# Ignore the 'del' folder on the root
+/del/
+
+# Ignore Python temporary files
 *.pyc
 __pycache__/
 
-# Ignora file di log
+# Ignore log files
 *.log
 
-# Ignora file di configurazione privati
+# Ignore private configuration files
 *.env
 
-# Ignora file di build
+# Ignore build files
 build/
 dist/
 *.egg-info/

@@ -5,6 +5,7 @@
 #   "tkinter" with event loop ideal for static widget graphics 2D(GUI)
 #   "pyOpenGL" with loop frame, uses OpenGL API for 3D graphics
 #   "webapp" future extensions
+#   "console" no graphics, only command line
 
 # "mode" : type of execution mode
 #   "play" checkers game between player 1 and player 2

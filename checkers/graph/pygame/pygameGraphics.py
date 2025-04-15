@@ -7,6 +7,9 @@ class PygameGraphics(GraphicsInterface):
         self.screen = pygame.display.set_mode((800, 800))
         pygame.display.set_caption("Checkers")
 
+    def render(self):
+        pass
+
     def draw_board(self, board_state):
         # Disegna la scacchiera in base a board_state
         self.screen.fill((255, 255, 255))  # Sfondo bianco

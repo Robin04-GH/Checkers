@@ -7,6 +7,16 @@ class GraphicsInterface(ABC):
     """
 
     @abstractmethod
+    def render(self):
+        """
+        Function
+        
+        @param 
+        """
+        
+        pass
+
+    @abstractmethod
     def draw_board(self, board_state):
         """
         Function

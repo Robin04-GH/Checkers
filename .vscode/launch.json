@@ -17,10 +17,11 @@
             "name": "Python: checkers",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/checkers/checkers.py",
-            "args": ["config01.json"],
+            "program": "${workspaceFolder}/checkers/checkersMain.py",
+            "args": ["configPlay.ini"],
             "python": "${workspaceFolder}/env/bin/python",
-            "console": "integratedTerminal"            
+            "console": "integratedTerminal",   
+            "justMyCode": true
         }        
 
     ]

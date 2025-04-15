@@ -1,6 +1,0 @@
-{
-    "graphics": "pygame",
-    "mode": "play",
-    "player1": "manual",
-    "player2": "manual"
-}
