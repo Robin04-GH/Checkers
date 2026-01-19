@@ -1,3 +1,6 @@
+# tests
+CHECK_TREE = False
+
 # checkerboard size
 DIM_CKECKERBOARD = 8
 
@@ -6,6 +9,9 @@ MAX_DARK_CELLS = 32
 
 # maximum number of man or king
 MAX_MAN = 12
+
+# maximun numeber if moves for cell
+MAX_CELL_MOVE = 4
 
 """
 NOTE DOMANDE :

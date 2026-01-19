@@ -1,7 +1,7 @@
 import sys
-from checkers.configManager import ConfigManager
+from checkers.config_manager import ConfigManager
 from checkers.engine.game.checkerboard import Checkerboard
-from checkers.graph.graphicsFactory import GraphicsFactory
+from checkers.graph.graphics_factory import GraphicsFactory
 
 def usage():
 	"""
@@ -10,7 +10,7 @@ def usage():
 
 	# Specify the configuration file
 	# N.B.: Without pyenv use python3 !
-	print('python checkers.py', '<configuration file>')
+	print('python checkers_main.py', '<configuration file>')
 	sys.exit(1)
 
 
@@ -26,10 +26,9 @@ if __name__ == '__main__':
 		usage()
 
 	# open configuration file		
-	fileName: str = args[1]
-	config: ConfigManager = ConfigManager(fileName)
+	file_name: str = args[1]
+	config_manager: ConfigManager = ConfigManager(file_name)
 
 	# Graphical dependencies with the class factory method
-	configGraphApproach: str = config.get("Configuration", "graphics", default="console")
-	checkerboard: Checkerboard = Checkerboard(graphics=GraphicsFactory.create_graphics(configGraphApproach), config=config)	
-	checkerboard.executeMode()
+	checkerboard: Checkerboard = Checkerboard(config = config_manager, graphics = GraphicsFactory.create_graphics(config_manager.graph_approach))	
+	checkerboard.execute_mode()

@@ -1,8 +1,8 @@
-from checkers.graph.graphicsInterface import GraphicsInterface
+from checkers.graph.graphics_interface import GraphicsInterface
 from checkers.graph.pygame.pygameGraphics import PygameGraphics
 from checkers.graph.console.console import Console
 
-class GraphicsFactory():
+class GraphicsFactory:
     """
     Factory class to create the dependency to the graphical module 
     without directly exposing the constructor.

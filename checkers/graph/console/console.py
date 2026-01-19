@@ -1,4 +1,4 @@
-from checkers.graph.graphicsInterface import GraphicsInterface
+from checkers.graph.graphics_interface import GraphicsInterface
 
 class Console(GraphicsInterface):
     """

@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: cellsSpeedTestFun",
+            "name": "Python: console_board",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/demo/cellsSpeedTestFun.py",
+            "program": "${workspaceFolder}/demo/console_board.py",
             "args": [""],
             "python": "${workspaceFolder}/env/bin/python",
             "console": "integratedTerminal"            
@@ -17,12 +17,24 @@
             "name": "Python: checkers",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/checkers/checkersMain.py",
-            "args": ["configPlay.ini"],
+            "program": "${workspaceFolder}/checkers/checkers_main.py",
+            "args": ["config_play.ini"],
             "python": "${workspaceFolder}/env/bin/python",
             "console": "integratedTerminal",   
             "justMyCode": true
-        }        
+        },
+        {
+            "name": "Python: checkers multiprocess",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/checkers/checkers_main.py",
+            "args": ["config_play.ini"],
+            "python": "${workspaceFolder}/env/bin/python",
+            "console": "integratedTerminal",   
+            "justMyCode": false,
+            "subProcess": true
+        },
+
 
     ]
 }

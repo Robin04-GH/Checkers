@@ -2,8 +2,9 @@
 # just add this directive (Python >=3.10)
 from __future__ import annotations
 from dataclasses import dataclass
-from enum import Enum
+from typing import Optional
 from checkers.constant import MAX_DARK_CELLS, DIM_CKECKERBOARD
+import enum
 
 # To make the class formally immutable, use @dataclass(frozen=True).
 # This way, attributes cannot be modified and hashing can be used.
@@ -54,7 +55,7 @@ class Coordinates2D:
 
 
 
-class Cells():
+class Cells:
     """
     Class for managing and collecting dark cells of the checkerboard.
 
@@ -71,9 +72,12 @@ class Cells():
     opponent pieces. 
     """
 
+
     # Inner class used to define the type of movement of the pieces 
     # between the dark cells
-    class EnumMove(Enum):
+    @enum.unique
+    class EnumMove(enum.Enum):
+        M_NONE = 0
         M_SIMPLE = 1
         M_CAPTURE = 2
 
@@ -85,34 +89,51 @@ class Cells():
         @param -: .
         """
 
-        self.simpleMoves = tuple(self.findMoveCells(i, self.EnumMove.M_SIMPLE.value) for i in range(MAX_DARK_CELLS))
-        self.captureMoves = tuple(self.findMoveCells(i, self.EnumMove.M_CAPTURE.value) for i in range(MAX_DARK_CELLS))
+        self._simple_moves = tuple(self.find_move_cells(i, Cells.EnumMove.M_SIMPLE.value) for i in range(MAX_DARK_CELLS))
+        self._capture_moves = tuple(self.find_move_cells(i, Cells.EnumMove.M_CAPTURE.value) for i in range(MAX_DARK_CELLS))
 
+    def is_valid_cell(self, id_dark_cell:int)->bool:
+        if (0 <= id_dark_cell < MAX_DARK_CELLS):
+            return True
+        else:
+            return False
+
+    # N.B.: with the exception you don't need to return a bool !
+    def check_valid_cell(self, id_dark_cell:int):
+        if not (0 <= id_dark_cell < MAX_DARK_CELLS):
+            raise KeyError(f"Specified cell ID {id_dark_cell} is out of bounds !")
+        
     # returns the tuple of simple movements given the index 
     # of the original dark cell
-    def getSimpleMoves(self, indexDarkCell:int)->tuple[int, int, int, int]:
-        if not (0 <= indexDarkCell < len(self.simpleMoves)):
+    def get_simple_moves(self, index_dark_cell:int, mask:Optional[tuple[bool, bool, bool, bool]]=None)->tuple[int, int, int, int]:
+        if not self.is_valid_cell(index_dark_cell):
             return (-1, -1, -1, -1)
         
-        return self.simpleMoves[indexDarkCell]
+        if mask == None:
+            return self._simple_moves[index_dark_cell]
+        else:
+            return tuple(-1 if not filter else cell for filter, cell in zip(mask, self._simple_moves[index_dark_cell]))
 
     # returns the tuple of capture movements given the index 
     # of the original dark cell
-    def getCaptureMoves(self, indexDarkCell:int)->tuple[int, int, int, int]:
-        if not (0 <= indexDarkCell < len(self.captureMoves)):
+    def get_capture_moves(self, index_dark_cell:int, mask:Optional[tuple[bool, bool, bool, bool]]=None)->tuple[int, int, int, int]:
+        if not self.is_valid_cell(index_dark_cell):
             return (-1, -1, -1, -1)
-        
-        return self.captureMoves[indexDarkCell]
+
+        if mask == None:
+            return self._simple_moves[index_dark_cell]
+        else:
+            return tuple(-1 if not filter else cell for filter, cell in zip(mask, self._capture_moves[index_dark_cell]))
 
     # transforms the dark cell index [0..31] into 8x8 checkerboard 
     # coordinates [0..7][0..7]
-    def index2coord(self, indexDarkCell:int)->Coordinates2D:
-        if not (0 <= indexDarkCell < MAX_DARK_CELLS):
+    def index2coord(self, index_dark_cell:int)->Coordinates2D:
+        if not self.is_valid_cell(index_dark_cell):
             return Coordinates2D(-1, -1)
         
-        indexCheckerboard = indexDarkCell * 2
-        row = indexCheckerboard // DIM_CKECKERBOARD
-        col = indexCheckerboard % DIM_CKECKERBOARD
+        index_checkerboard = index_dark_cell * 2
+        row = index_checkerboard // DIM_CKECKERBOARD
+        col = index_checkerboard % DIM_CKECKERBOARD + row % 2
         return Coordinates2D(row, col)
 
     # transforms the 8x8 checkerboard coordinates [0..7][0..7] 
@@ -124,23 +145,24 @@ class Cells():
         if not (0 <= row < DIM_CKECKERBOARD and 0 <= col < DIM_CKECKERBOARD):
             return -1
         
-        indexCells = row * DIM_CKECKERBOARD + col
+        index_cells = row * DIM_CKECKERBOARD + col
 
         # check light cells
-        if (indexCells % 2 != 0):
+        if (row % 2 != col % 2):
             return -1
         
-        return indexCells // 2
+        return index_cells // 2
 
     # returns the tuple of dark cells with simple/capture movements 
     # starting from the dark cell ID
-    def findMoveCells(self, indexDarkCell:int, d:EnumMove)->tuple[int, int, int, int]:
-        if not (0 <= indexDarkCell < MAX_DARK_CELLS):
+    def find_move_cells(self, index_dark_cell:int, d:EnumMove)->tuple[int, int, int, int]:
+        if not self.is_valid_cell(index_dark_cell):
             return (-1,-1,-1,-1)
         
-        coord : Coordinates2D = self.index2coord(indexDarkCell)
+        coord : Coordinates2D = self.index2coord(index_dark_cell)
         moves = []
 
+        # tuple sorted for cartesian dials (1:up-rt,..., 4:dn-rt)
         for dcol, drow in [( d, -d), (-d, -d), (-d, d), (d, d)]:
             ncol, nrow = coord.col + dcol, coord.row + drow
 

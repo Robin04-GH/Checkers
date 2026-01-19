@@ -82,7 +82,7 @@ counter = 0
 
 while running:
 #    aggiorna_schermo = False  # Evita ridisegni inutili
-
+    
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             queue_ia.put("EXIT")  # Chiude il thread IA in modo pulito

@@ -1,10 +1,23 @@
-class MovesPlayer():
+from typing import Set, Tuple
+from checkers.engine.game.state import State
+from checkers.engine.game.move_rules import MoveRules
+from checkers.engine.game.move import Score, Node
+
+from checkers.constant import CHECK_TREE
+if CHECK_TREE:
+  from tests.check_tree import CheckTree
+
+class MovesPlayer(MoveRules):
     """
     Class     
 
-    movesPlayer
-    movesPiece
-    moveRules
+    - movesPlayer 
+       classe che nel thread (o process) engine scansiona tutti i pezzi del player_turn per costruire il dict 
+       di tutte le possibili mosse (score locale dict)
+       N.B.: nella classe Pieces (reference dalla classe State) serve una funzione generatrice di pezzi del player !
+    - moveRules
+       classe chiamata da movesPlayer per costruire l'albero delle mosse data la cella di origine
+    - 
 
     *** Dati :
     'move' = tupla di cell ID simple/capture (origine implicita)
@@ -106,11 +119,50 @@ class MovesPlayer():
 
     """
 
-    def __init__(self):
+    def __init__(self, state:State):
         """
         Constructor 
 
         @param -: .
         """
+        super().__init__(state)
+        self.state = state
+        self.pieces = self.state.pieces
+        self._moves_dict : dict[int, tuple[Node, set]]= {}
+    
+    def reset_dict(self):
+        for (root, _) in self._moves_dict.values():
+            root.cleanup()
+            del root
+        self._moves_dict.clear()
+  
+    def all_moves_generator(self):
+        self.reset_dict()
 
-        #self.pieces = {}
+        dict_score : Score = Score()
+        # iteration player's pieces
+        for origin_cell in self.pieces.iter_player(self.state.player_turn):                        
+            # tree of possible moves to the cell of origin
+            root, set_move = self.move_tree_builder(origin_cell)
+
+            if root != None:
+                # test score
+                if root.score < dict_score:
+                    root.cleanup()
+                    del root
+                else:
+                    if root.score > dict_score:
+                        dict_score = root.score
+                        self.reset_dict()                        
+                    self._moves_dict[origin_cell] = (root, set_move)
+
+                    if CHECK_TREE:
+                        ct : CheckTree = CheckTree()
+                        ct.test_tree(root, set_move)
+
+        a = 0
+        
+                
+
+        
+    

@@ -61,11 +61,18 @@
 
 - Aggiungere una label per messaggi sotto la scacchiera : 'Seleziona pedina, muove bianco/nero, fine partita, status engine, ...'.
 
-- mosse col mouse : selezione pedina (tasto premuto), ricevo possibili celle delle mosse permesse (per cambiare mossa è necessario ritornare sulla cella iniziale), spostamento mouse con filtro e centri gravità (per evitare di vagare). Se lascio il mouse 
-senza aver terminato la mossa, l'ultima cella spostata rimane selezionata. Occorre riprenderla col tasto premuto del mouse per completare la mossa o tornare indietro per altra scelta eventuale.
-Se lascio il mouse quando era già su una cella di possibile destinazione, la mossa è effettuata e non è possibile tornare indietro.
+- mosse col mouse : selezione pedina (tasto premuto), ricevo possibili celle delle mosse permesse (per cambiare mossa è necessario ritornare sulla cella iniziale), spostamento mouse con filtro e centri gravità per evitare di vagare :
+ 0) c'è il livello si posizione del mouse e quello di posizione della pedina che deve muoversi.
+ 1) sul primo click il centro di gravità passa dal centro della cella al punto cliccato
+ 2) durante il trascinamento del mouse il centro di gravità è la posizione del mouse stesso ma cimato
+ al rettangono minimo tra la cella di partenza e le possibili celle di attivo su quello step di mossa.
+ 3) sul rilascio del mouse il centro di gravità torna alla cella su cui si era spostato il mouse. 
+Se lascio il mouse senza aver terminato la mossa la procedura viene abortita, cancellati gli step transitori della mossa e ripristinato lo stato originale.
+Se lascio il mouse quando era già su una cella di possibile destinazione, la mossa è effettuata e non è possibile tornare indietro. Solo in questo momento viene aggiornato lo stato generale del gioco.
 
-- mosse con tastiera : selezione prima pedina automatica, usare frecce sx/dx per scelta selezione e per le 4 direzioni diagonali possibili usare i tasti T, U, N, V. Se ritorno nella cella iniziale riattivo anche le frecce per poter cambiare ancora pedina. La deselezione al termine percorso delle celle permesse avviene con invio (equivalente al rilascio del mouse) per confermare la mossa.
+- mosse con tastiera : evidenziare possibili celle mosse in automatico, usare frecce sx/dx per scelta selezione ed invio per conferma. Se mossa a piu step la procedura si ripete. 
+Se ritorno nella cella iniziale riattivo anche le frecce per poter cambiare ancora pedina. 
+La deselezione al termine percorso delle celle permesse era avvenuta con l'ultimo invio (equivalente al rilascio del mouse) che conferma anche la mossa.
 
 - gestione mosse : puo essere spostamento semplice o spostamento con cattura, anche multiplo. Prevedere stato avanzamento a dama.
 Alcuni PDN riportano solo la cella iniziale e destinazione ma non quelle eventuali intermedie (indicando però come separatore numeri celle con 'x' per le catture anziche '-'). 
@@ -89,7 +96,7 @@ Lo scorrimento mosse è ciclico e visibile nelle bar dei player.
   5) cambio player abilitato alla mossa e loop su 2
 
 - Struttura progetto :
-  1) checkers.py per __main__, config e inizializzazioni classi base.
+  1) checkers_main.py per __main__, config e inizializzazioni classi base.
   2) in /game checkerboard.py per memoria scacchiera, inizializzazione (reset) o lettura stato iniziale e invio dati pedine per grafica.
   3) script per regole (possibili mosse) e loop sequenza gioco.
   4) in /graph script per grafica con varie tecniche (da config), e gestioni per mouse/tastiera (diverse in base al package usato).
