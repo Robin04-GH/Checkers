@@ -9,9 +9,19 @@ MAX_DARK_CELLS = 32
 
 # maximum number of man or king
 MAX_MAN = 12
+MAX_KING = MAX_MAN + MAX_MAN
 
 # maximun numeber if moves for cell
 MAX_CELL_MOVE = 4
+
+# screen width x height
+SCREEN_WIDTH = 600
+SCREEN_HEIGHT = 600
+
+# Cell dimension
+CELL_WIDTH = SCREEN_WIDTH // DIM_CKECKERBOARD
+CELL_HEIGHT = SCREEN_HEIGHT // DIM_CKECKERBOARD
+
 
 """
 NOTE DOMANDE :

@@ -1,10 +1,29 @@
 from abc import ABC, abstractmethod
+import threading
 
 class GraphicsInterface(ABC):
     """
     Abstract class to allow the game engine to interface with the 
     graphics module without knowing which graphics library was used
     """
+
+    @abstractmethod
+    def start(self)->threading.Thread:
+        """
+        """        
+        pass
+
+    @abstractmethod
+    def wait_started(self):
+        """
+        """        
+        pass
+
+    @abstractmethod
+    def main_graph(self):
+        """
+        """        
+        pass
 
     @abstractmethod
     def process_events(self):
@@ -24,12 +43,5 @@ class GraphicsInterface(ABC):
     def main_loop(self, update_logic):
         """
         Main graphic loop.
-        """
-        pass
-
-    @abstractmethod
-    def message_new_game(self) -> bool:
-        """
-        Modal message new game.
         """
         pass

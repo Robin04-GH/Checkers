@@ -120,7 +120,7 @@ while running:
         aggiorna_schermo = False
         schermo.blit(scacchiera_surface, (0, 0))  # Sfondo fisso
         pedine_surface.fill((0, 0, 0, 0))  # Pulisce la surface delle pedine
-
+        
         counter += 1
         print(f'Refresh {counter}')
 
@@ -133,3 +133,23 @@ while running:
         mossa_IA_completata = False  # Reset del flag
 
 pygame.quit()
+
+# - surface.blit() : non disegna sullo schermo. Copia pixel da una Surface a un'altra Surface in RAM 
+# (nell'esempio la 'schermo' in memoria ma non il monitor). Non consuma molta CPU è veloce.
+# E' possibile ottimizzare le blit copiando solo la parte modificata del layer, esempio :
+#   screen.blit(pieces_layer, dirty_rects, dirty_rects)
+# Significato degli argomenti :
+#  1) sorgente, la surface da cui copiare i pixel
+#  2) destinatario, posizione sulla screen o un Rect.
+#  3) area, rettangolo dentro la surface sorgente da copiare
+# Il caso un solo rect (coordinata (0, 0)) copia tutta la pieces_layer e la posiziona in (0, 0) sullo screen.
+# Il caso con sue rect specifica su quale rettangolo dello screen copiare, e da quale rettangolo della sorgente
+# prendere i pixel.
+# La surface potrebbe non essere grande come tutto lo schermo, ad esempio prendere solo l'area di una
+# pedina (questo è il modello a 'sprite'), e blittare solo quello che serve.
+#
+# - pygame.display.update(rect) : aggiorna solo le zone specifiche dello schermo (rettangolo), 
+# questa agisce sul monitor.
+#
+# - pygame.display.flip() : aggiorna tutto lo schermo (equivalente a 'pygame.display.update()' senza parametri).
+# Usata per ridisegnare tutto ogni frame.

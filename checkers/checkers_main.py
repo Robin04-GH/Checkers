@@ -1,5 +1,7 @@
 import sys
+import threading
 from checkers.config_manager import ConfigManager
+from checkers.channels.channel import Gateway
 from checkers.engine.game.checkerboard import Checkerboard
 from checkers.graph.graphics_factory import GraphicsFactory
 
@@ -29,6 +31,15 @@ if __name__ == '__main__':
 	file_name: str = args[1]
 	config_manager: ConfigManager = ConfigManager(file_name)
 
+	# Comunicazione tra moduli su thread diversi
+	gateway: Gateway = Gateway()
+
 	# Graphical dependencies with the class factory method
-	checkerboard: Checkerboard = Checkerboard(config = config_manager, graphics = GraphicsFactory.create_graphics(config_manager.graph_approach))	
+	graphics = GraphicsFactory.create_graphics(config_manager.graph_approach, gateway)
+	thread : threading.Thread = graphics.start()
+	graphics.wait_started()
+
+	checkerboard: Checkerboard = Checkerboard(config_manager, gateway)
 	checkerboard.execute_mode()
+
+	thread.join()

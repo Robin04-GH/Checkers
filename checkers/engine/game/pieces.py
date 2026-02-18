@@ -1,53 +1,51 @@
 import enum
-from checkers.constant import MAX_DARK_CELLS, MAX_MAN
-from checkers.engine.game.cells import Coordinates2D, Cells
+from checkers.constant import MAX_MAN, MAX_KING, MAX_DARK_CELLS
+from checkers.engine.game.cells import Cells
+from collections.abc import Generator
 
-class Pieces(Cells):
+# Class, used to define the color that indicate the player 
+# whose turn it is to make the move.
+@enum.unique
+class EnumPlayersColor(enum.Enum):
+    P_LIGHT = 0
+    P_DARK = 1
 
-    # Inner class, used to define the color that indicate the player 
-    # whose turn it is to make the move.
-    @enum.unique
-    class EnumPlayersColor(enum.Enum):
-        P_LIGHT = 0
-        P_DARK = 1
+class Pieces:
 
     """
     Class containing the game pieces of both players as a reverse 
     dictionary : 
     - keys   = ID dark cells
-    - values = ID 'man' [1..12]
+    - values = ID piece 'man/king' [1..12/13..24]
     When a 'man' is promoted to a 'king', 12 is added to the ID.
     Player 'light' has positive IDs, player 'dark' has negative IDs.
     """
 
-    # class attribute
-    MAX_MAN_X2 = MAX_MAN + MAX_MAN
-
     def __init__(self):
         """
         Constructor defines the reverse dictionary leaving it empty. 
-        { Key = id_dark_cell : value = id_piece }
         The loading of the pieces depends on whether a reset or a restore 
         from a configurable initial state is performed.
 
         @param -: .
         """
 
-        super().__init__()
         self._reverse_dict : dict[int, int] = {}
 
     def clear(self):
         self._reverse_dict.clear()
 
-    def is_valid_piece(self, id_piece:int)->bool:
-        if (1 <= abs(id_piece) <= Pieces.MAX_MAN_X2):
+    @staticmethod
+    def is_valid_piece(id_piece:int)->bool:
+        if (1 <= abs(id_piece) <= MAX_KING):
             return True
         else:
             return False
 
     # N.B.: with the exception you don't need to return a bool !
-    def check_valid_piece(self, id_piece:int):
-        if not (1 <= abs(id_piece) <= Pieces.MAX_MAN_X2):
+    @staticmethod
+    def check_valid_piece(id_piece:int):
+        if not (1 <= abs(id_piece) <= MAX_KING):
             raise ValueError(f"Specified piece ID {id_piece} is out of bounds !")
 
     # N.B.: with the exception you don't need to return a bool !
@@ -61,22 +59,21 @@ class Pieces(Cells):
             raise KeyError(f"Cell {id_dark_cell} already contains a piece !")
 
     def add_pieces(self, id_dark_cell:int, id_piece:int):
-        self.check_valid_cell(id_dark_cell)
-        self.check_valid_piece(id_piece)
+        Cells.check_valid_cell(id_dark_cell)
+        Pieces.check_valid_piece(id_piece)
         self.check_empty_cell(id_dark_cell)
 
         self._reverse_dict[id_dark_cell] = id_piece
 
     def remove_pieces(self, id_dark_cell:int):
-        self.check_valid_cell(id_dark_cell)
+        Cells.check_valid_cell(id_dark_cell)
         self.check_busy_cell(id_dark_cell)
 
         del self._reverse_dict[id_dark_cell]
 
     def update_position(self, origin_cell:int, target_cell:int):
-        self.check_valid_cell(origin_cell)
-        self.check_valid_cell(target_cell)
-
+        Cells.check_valid_cell(origin_cell)
+        Cells.check_valid_cell(target_cell)
         # check for the presence of a piece on the original cell
         self.check_busy_cell(origin_cell)        
         # check for absence of a piece on the target cell
@@ -87,41 +84,70 @@ class Pieces(Cells):
 
     def get_id_piece(self, id_dark_cell:int)->int:
         # avoid id_dark_cell validity test to return zero anyway
-        #self.check_valid_cell(id_dark_cell)
+        # Cells.check_valid_cell(id_dark_cell)
 
         # if the cell contains no pieces it returns zero
         return self._reverse_dict.get(id_dark_cell, 0)
         
-    def promotion_king(self, id_dark_cell:int):
+    def check_promotion_king(self, id_dark_cell:int, player:EnumPlayersColor)->bool:
         # check for the presence of a piece on the specified cell
         self.check_busy_cell(id_dark_cell)        
 
-        id_piece = self.get_id_piece(id_dark_cell)
+        # check base cell
+        if not (
+            (player == EnumPlayersColor.P_DARK and id_dark_cell >= MAX_DARK_CELLS - 4) or
+            (player == EnumPlayersColor.P_LIGHT and id_dark_cell < 4)
+        ):
+            return False
 
-        self.check_valid_piece(id_piece)
-        
+        id_piece = self.get_id_piece(id_dark_cell)
+        Pieces.check_valid_piece(id_piece)
+    
         # promotion to King
+        if abs(id_piece) > MAX_MAN:
+            return False
+
         if 0 < id_piece <= MAX_MAN: 
             id_piece += MAX_MAN
         elif 0 > id_piece >= -MAX_MAN:
             id_piece -= MAX_MAN
-        else:
-            raise ValueError(f"The piece ID {id_piece} is already a king and cannot be promoted yet !")
-
-        self._reverse_dict[id_dark_cell] = id_piece
+        self._reverse_dict[id_dark_cell] = id_piece  
+        return True
     
     # funcion generating a player's pieces 
-    def iter_player(self, player:EnumPlayersColor):
+    def iter_player_cells(self, player:EnumPlayersColor)->Generator[int, None, None]:
         for (cell, piece) in self._reverse_dict.items():
-            if player == Pieces.EnumPlayersColor.P_LIGHT:
+            if player == EnumPlayersColor.P_LIGHT:
                 if piece > 0:
                     yield cell
             else:
                 if piece < 0:
                     yield cell
     
+    def iter_players_pieces(self)->Generator[tuple[int, int], None, None]:
+        for (cell, piece) in self._reverse_dict.items():
+            yield (cell, piece)
+
+    def counter_man_king(self, player:EnumPlayersColor)->tuple[int, int]:
+        _man : int = 0
+        _king : int = 0
+        for (_, piece) in self._reverse_dict.items():
+            if player == EnumPlayersColor.P_LIGHT:
+                if piece > 0:
+                    if 0 < piece <= MAX_MAN:
+                        _man += 1
+                    else:
+                        _king += 1
+            else:
+                if piece < 0:
+                    if 0 < -piece <= MAX_MAN:
+                        _man += 1
+                    else:
+                        _king += 1
+        return (_man, _king)
+
     def is_man(self, id_dark_cell:int)->bool:
-        self.check_valid_cell(id_dark_cell)
+        Cells.check_valid_cell(id_dark_cell)
         self.check_busy_cell(id_dark_cell)
         if 0 < abs(self.get_id_piece(id_dark_cell)) <= MAX_MAN:
             return True
@@ -129,17 +155,17 @@ class Pieces(Cells):
             return False
         
     def is_king(self, id_dark_cell:int)->bool:
-        self.check_valid_cell(id_dark_cell)
+        Cells.check_valid_cell(id_dark_cell)
         self.check_busy_cell(id_dark_cell)
-        if MAX_MAN < abs(self.get_id_piece(id_dark_cell)) <= Pieces.MAX_MAN_X2:
+        if MAX_MAN < abs(self.get_id_piece(id_dark_cell)) <= MAX_KING:
             return True
         else:
             return False
     
     def get_player(self, id_dark_cell:int)->EnumPlayersColor:
-        self.check_valid_cell(id_dark_cell)
+        Cells.check_valid_cell(id_dark_cell)
         self.check_busy_cell(id_dark_cell)
         if self.get_id_piece(id_dark_cell) > 0:
-            return Pieces.EnumPlayersColor.P_LIGHT
+            return EnumPlayersColor.P_LIGHT
         else:
-            return Pieces.EnumPlayersColor.P_DARK
+            return EnumPlayersColor.P_DARK

@@ -1,5 +1,6 @@
 from checkers.graph.graphics_interface import GraphicsInterface
-from checkers.graph.pygame.pygameGraphics import PygameGraphics
+from checkers.graph.pygame.pygame_graphics import PygameGraphics
+from checkers.channels.channel import Gateway
 from checkers.graph.console.console import Console
 
 class GraphicsFactory:
@@ -11,14 +12,16 @@ class GraphicsFactory:
     """
 
     @staticmethod
-    def create_graphics(graphApproach : str) -> GraphicsInterface:
-        if graphApproach == "pygame":
-            return PygameGraphics()
-        #elif graphApproach == "tkinter":
-        #   return TkinterGraphics()
-        #elif graphApproach == "pyOpenGL":
-        #   return OpenGLGraphics()
-        #elif graphApproach == "webapp":
-        #   return WebGraphics()
-        else :
-           return Console()
+    def create_graphics(graphApproach:str, gateway:Gateway)->GraphicsInterface:
+        
+        match graphApproach:
+            case "pygame":
+                return PygameGraphics(gateway)
+            #case "tkinter":
+            #    return TkinterGraphics()
+            #case "pyOpenGL":
+            #    return OpenGLGraphics()
+            #case"webapp":
+            #    return WebGraphics()
+            case _:
+                return Console()

@@ -2,8 +2,8 @@
 # just add this directive (Python >=3.10)
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional, List
-from checkers.engine.game.cells import Cells
+from typing import Optional
+from checkers.engine.game.cells import Cells, EnumMove
 from checkers.constant import MAX_CELL_MOVE
 
 # To make the class formally immutable, use @dataclass(frozen=True).
@@ -13,7 +13,7 @@ class Score:
     capture_pieces : int = 0
     capture_king : int = 0
     first_capture_king : int = 0
-    type_move : Cells.EnumMove = Cells.EnumMove.M_NONE
+    type_move : EnumMove = EnumMove.M_NONE
     # does not determine score, only given storage
     # N.B.: Score with only different last_capture_cell attribute are identical 
     # for the equality and hash operator !
@@ -25,27 +25,31 @@ class Score:
     - step first capture king
     - type move (single/capture)
     storage last capture cell
+
+    N.B.: lo score è uno strumento per individuare tutte le possibili mosse in base alle regole del gioco.
+    L'insieme di mosse risultanti tutte con stesso score (il massimo ottenibile) sarà poi oggetto del 
+    processo di inferenza !
     """
 
     def set_single(self)->Score:
         # Verify type_move
-        if self.type_move != Cells.EnumMove.M_NONE:
-            raise ValueError(f"Error set type move !")
+        if self.type_move != EnumMove.M_NONE:
+            raise ValueError(f"Class Score, set_single(): error set type move !")
             
-        return Score(self.capture_pieces, self.capture_king, self.first_capture_king, Cells.EnumMove.M_SIMPLE, self.last_capture_cell)
+        return Score(self.capture_pieces, self.capture_king, self.first_capture_king, EnumMove.M_SIMPLE, self.last_capture_cell)
 
     def set_capture_man(self, last_capture_cell:int)->Score:
-        return Score(self.capture_pieces + 1, self.capture_king, self.first_capture_king, Cells.EnumMove.M_CAPTURE, last_capture_cell)
+        return Score(self.capture_pieces + 1, self.capture_king, self.first_capture_king, EnumMove.M_CAPTURE, last_capture_cell)
     
     def set_capture_king(self, last_capture_cell:int, step:int)->Score:
         # Verify step
         if step <= 0:
-            raise ValueError(f"Error set step first capture king !")
+            raise ValueError(f"Class Score, set_capture_king(): error set step first capture king !")
         
         return Score(self.capture_pieces + 1, self.capture_king + 1, (
             self.first_capture_king 
             if self.first_capture_king != 0 else step
-        ), Cells.EnumMove.M_CAPTURE, last_capture_cell)
+        ), EnumMove.M_CAPTURE, last_capture_cell)
 
     def __eq__(self, other: Score)->bool:
         """
@@ -165,6 +169,68 @@ class Node:
                     self.next_move[index] = None
                     return True
         return False
+
+# To make the class formally immutable, use @dataclass(frozen=True).
+# This way, attributes cannot be modified and hashing can be used.
+@dataclass(frozen=True)
+class Move:
+    origin : int
+    destinations : tuple[int]
+    captures : tuple[int] = ()
+    """
+    Classe tipo per rappresentare una mossa
+    """
+
+    # Il metodo '__post_init__' viene chiamato dopo la creazione dell’oggetto, 
+    # quindi è il posto giusto per fare validazioni :
+    #  1) la validita delle cells è considerata implicita nella costruzione precedente delle liste
+    def __post_init__(self):
+        # 2) verifica se captures è vuota, len destinations = 1 : caso 'move simple'
+        if not self.captures:
+            if len(self.destinations) != 1:
+                raise ValueError(
+                    f"Class Move, __post_init__(): simple move must have exactly 1 destination, got {len(self.destinations)}"
+                )
+
+        # 3) verifica se len(captures) = len(destinations) : caso 'move capture'
+        else:
+            if len(self.captures) != len(self.destinations):
+                raise ValueError(
+                    f"Class Move, __post_init__(): capture move must have same number of captures and destinations "
+                    f"({len(self.captures)} != {len(self.destinations)})"
+                )
+
+    def __eq__(self, other: Move)->bool:
+        """
+        Define == operator.
+
+        @param other: Other move that we are comparing with.
+        """
+
+        if other != None:
+            if (
+                self.origin == other.origin and
+                self.destinations == other.destinations and
+                self.captures == other.captures
+            ):
+                return True
+            else:
+                return False
+
+    # Python requires that if two objects are considered equal via the 
+    # __eq__ method, then their hash value (__hash__) must be the same.
+    def __hash__(self)->int:
+        return hash((self.origin, self.destinations, self.captures))
+    
+    def set_capture(self, destination:int, capture:int):
+        _destinations = (*self.destinations, destination)
+        _captures = (*self.captures, capture)
+        return Move(self.origin, _destinations, _captures)
+    
+    def remove_last(self):
+        _destinations = self.destinations[:-1]
+        _captures = self.captures[:-1] if len(self.captures) else tuple()
+        return Move(self.origin, _destinations, _captures)
 
 """
 Note :

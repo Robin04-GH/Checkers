@@ -5,10 +5,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: console_board",
+            "name": "Python: console",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/demo/console_board.py",
+            "args": [""],
+            "python": "${workspaceFolder}/env/bin/python",
+            "console": "integratedTerminal"            
+        },
+        {
+            "name": "Python: pygame",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/demo/pygame_dirty.py",
             "args": [""],
             "python": "${workspaceFolder}/env/bin/python",
             "console": "integratedTerminal"            
@@ -21,7 +30,7 @@
             "args": ["config_play.ini"],
             "python": "${workspaceFolder}/env/bin/python",
             "console": "integratedTerminal",   
-            "justMyCode": true
+            "justMyCode": true,
         },
         {
             "name": "Python: checkers multiprocess",

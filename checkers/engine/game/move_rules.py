@@ -1,8 +1,8 @@
-from typing import Optional, Set, Tuple, List
-from checkers.engine.game.cells import Cells
-from checkers.engine.game.pieces import Pieces
+from typing import Optional, Set, Tuple
+from checkers.engine.game.cells import EnumMove, Cells
+from checkers.engine.game.pieces import EnumPlayersColor
 from checkers.engine.game.state import State
-from checkers.engine.game.move import Score, Node
+from checkers.engine.game.move import Score, Node, Move
 
 class MoveRules(Node):
     """
@@ -27,12 +27,13 @@ class MoveRules(Node):
         # stores the number of steps of the move before starting to explore a new alternative 
         # branch in the move tree.
         # Used to determine if a new validation node has been found and in backtracking.
-        self._branch_anchor: int = 0
+        self._branch_anchor : int = 0
+        self._is_king : bool = False
 
     # It depends only on origin_cell and player_turn, so mask is the same for the whole tree
     def set_mask(self, origin_cell:int)->tuple[bool, bool, bool, bool]:
         if self.pieces.is_man(origin_cell):
-            if self.state.player_turn == Pieces.EnumPlayersColor.P_LIGHT:
+            if self.state.player_turn == EnumPlayersColor.P_LIGHT:
                 return (True, True, False, False)
             else:
                 return (False, False, True, True)
@@ -75,8 +76,9 @@ class MoveRules(Node):
 
         tree_root : Optional[Node] = Node(origin_cell)
         self._current_node = tree_root
+        self._is_king = self.pieces.is_king(origin_cell)
 
-        set_move : set[tuple[int, ...]] = set()
+        set_move : set[Move] = set()
 
         next_node : Node = None
         mask_move : tuple[bool, bool, bool, bool] = self.set_mask(origin_cell)
@@ -89,28 +91,29 @@ class MoveRules(Node):
             while not self._current_node.is_complete_next():
                 next_node = None
                 index_dir = len(self._current_node.next_move)
-                single_cell = self.pieces.get_simple_moves(self._current_node.index_cell, mask_move)[index_dir]
-                if (not self.pieces.is_valid_cell(single_cell) or 
-                    self._current_node.score.type_move == Cells.EnumMove.M_SIMPLE
+                single_cell = Cells.get_simple_moves(self._current_node.index_cell, mask_move)[index_dir]
+                if (not Cells.is_valid_cell(single_cell) or
+                    self._current_node.score.type_move == EnumMove.M_SIMPLE
                 ):
                     self._current_node.next_move.append(None)
                 else:
                     if not self.is_busy_single(single_cell):
-                        if self._current_node.score.type_move == Cells.EnumMove.M_NONE:
+                        if self._current_node.score.type_move == EnumMove.M_NONE:
                             # single move
-                            next_node = self._add_node(Cells.EnumMove.M_SIMPLE, single_cell, None)
+                            next_node = self._add_node(EnumMove.M_SIMPLE, single_cell, None)
                         else:
                             self._current_node.next_move.append(None)
                     else:
-                        capture_cell = self.pieces.get_capture_moves(self._current_node.index_cell, mask_move)[index_dir]                
-                        if (not self.pieces.is_valid_cell(capture_cell) or
+                        capture_cell = Cells.get_capture_moves(self._current_node.index_cell, mask_move)[index_dir]                
+                        if (not Cells.is_valid_cell(capture_cell) or
                             not self.is_empty_capture(capture_cell, origin_cell) or
-                            self.state.pieces.get_player(single_cell) == self.state.player_turn
+                            self.state.pieces.get_player(single_cell) == self.state.player_turn or
+                            self._is_king < self.pieces.is_king(single_cell)
                         ):                            
                             self._current_node.next_move.append(None)
                         else:
                             # capture move
-                            next_node = self._add_node(Cells.EnumMove.M_CAPTURE, single_cell, capture_cell)
+                            next_node = self._add_node(EnumMove.M_CAPTURE, single_cell, capture_cell)
                 
                 if next_node != None:
                     # look for any other steps in the move
@@ -136,7 +139,7 @@ class MoveRules(Node):
                     count_move += 1
 
                 if not delete:
-                    set_move.add(tuple(self._current_move))
+                    set_move.add(Move(tree_root.index_cell, tuple(self._current_move), tuple(self._list_capture)))
 
             self.back_move(delete)
             # reset of self._branch_anchor needed after self.back_move() because used within the method
@@ -144,16 +147,16 @@ class MoveRules(Node):
 
         # tree score storage
         tree_root.score = tree_score
-        if tree_root.score.type_move == Cells.EnumMove.M_NONE:
+        if tree_root.score.type_move == EnumMove.M_NONE:
             tree_root = None
 
         return (tree_root, set_move)
 
-    def _score_node(self, type:Cells.EnumMove)->Score:
-        if type == Cells.EnumMove.M_NONE:
+    def _score_node(self, type:EnumMove)->Score:
+        if type == EnumMove.M_NONE:
             raise ValueError(f"Error : nothing type in _score_node() method !")
         
-        if type == Cells.EnumMove.M_SIMPLE:
+        if type == EnumMove.M_SIMPLE:
             return self._current_node.score.set_single()
         else:
             # Verify list capture
@@ -171,13 +174,13 @@ class MoveRules(Node):
             else:
                 return self._current_node.score.set_capture_king(capture_cell, self._move_length)
     
-    def _add_node(self, type:Cells.EnumMove, single_cell:int, capture_cell:Optional[int]=None)->Node:
+    def _add_node(self, type:EnumMove, single_cell:int, capture_cell:Optional[int]=None)->Node:
         self._move_length += 1
 
-        if type == Cells.EnumMove.M_CAPTURE:
+        if type == EnumMove.M_CAPTURE:
             self._list_capture.append(single_cell)
 
-        cell = single_cell if type == Cells.EnumMove.M_SIMPLE else capture_cell                                
+        cell = single_cell if type == EnumMove.M_SIMPLE else capture_cell                                
         self._current_move.append(cell)
 
         next_node : Node = Node(cell, self._score_node(type), self._current_node)

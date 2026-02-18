@@ -1,15 +1,20 @@
 from typing import Optional
-from checkers.engine.game.move import Node
+from checkers.engine.game.move import Node, Move
 from checkers.constant import MAX_CELL_MOVE
 
 class CheckTree:
+    """
+    Class for testing the tree of moves
+    """
 
     def __init__(self):
-        self.read_move : list[int] = []
+        self.origin : int = 0
+        self.read_destinations : list[int] = []
+        self.read_captures : list[int] = []
         self.root : Optional[Node] = None
-        self.set_move : set = {}
+        self.set_move : set[Move] = {}
 
-    def test_tree(self, root: Node, set_move: set[tuple[int, ...]]):
+    def test_tree(self, root: Node, set_move: set[Move]):
         if root != None:
             self.root = root
             self.set_move = set_move
@@ -21,7 +26,11 @@ class CheckTree:
             raise ValueError(f"Incomplete node.next_move !")
 
         if node != self.root:
-            self.read_move.append(node.index_cell)
+            self.read_destinations.append(node.index_cell)
+            if node.score.last_capture_cell >= 0:
+                self.read_captures.append(node.score.last_capture_cell)
+        else:
+            self.origin = node.index_cell
 
         not_child = True
         for child in node.next_move:
@@ -30,10 +39,12 @@ class CheckTree:
                 self._read_node(child)
 
         if not_child:
-            t = tuple(self.read_move)
-            if t in self.set_move:
-                self.set_move.discard(t)
+            _move = Move(self.origin, tuple(self.read_destinations), tuple(self.read_captures))
+            if _move in self.set_move:
+                self.set_move.discard(_move)
             else:
                 raise ValueError(f"Move not present in set !")
 
-        self.read_move = self.read_move[:-1]
+        self.read_destinations = self.read_destinations[:-1]
+        if len(self.read_captures) > 0:
+            self.read_captures = self.read_captures[:-1]

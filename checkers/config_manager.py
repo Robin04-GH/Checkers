@@ -1,6 +1,6 @@
 import configparser
 import json
-from typing import Any
+from typing import Any, Optional
 
 class ConfigManager:
     """
@@ -54,39 +54,52 @@ class ConfigManager:
 		#   "data" Unsupervised Learning (UL) data extraction
         self.execution_mode : str = self.get("Configuration", "mode", default="play")
 
-		# "player1" : type of decision engine for player 1
+        # "player1_name" : identification player 1
+        #   "<name_player> name player for storage data
+        self.player1_name : str = self.get("Configuration", "player1_name", default="name1")
+
+		# "player1_engine" : type of decision engine for player 1
 		#   N.B.: valid only in 'play' mode !
-		#   "manual" mouse or keyboard moves
+		#   "player" mouse or keyboard moves
 		#   "classic" MiniMax + Alpha-Beta Pruning
 		#   "SL" Supervised Learning
 		#   "RL" Reinforcement Learning
-        self.player_engine1 : str = self.get("Configuration", "player1", default="manual")
+        self.player1_engine : str = self.get("Configuration", "player1_engine", default="player")
         
-		# "player2" : type of decision engine for player 2
+        # "player2_name" : identification player 2
+        #   "<name_player> name player for storage data
+        self.player2_name : str = self.get("Configuration", "player2_name", default="name2")
+
+		# "player2_engine" : type of decision engine for player 2
 		#   N.B.: valid only in 'play' mode !
-		#   "manual" mouse or keyboard moves
+		#   "player" mouse or keyboard moves
 		#   "classic" MiniMax + Alpha-Beta Pruning
 		#   "SL" Supervised Learning
 		#   "RL" Reinforcement Learning
-        self.player_engine2 : str = self.get("Configuration", "player2", default="manual")
+        self.player2_engine : str = self.get("Configuration", "player2_engine", default="player")
         
+        # "parity_move" : massimo numero di mosse senza che venga catturato alcun pezzo e 
+        # senza che nessuna pedina si sia mossa (conteggio su entrambi i giocatori)
+        self.parity_move : int = int(self.get("Configuration", "parity_move", default=80).strip())
+
 		# "restore" : restore checkerboards state from archive /restores
 		#   N.B.: delete option if normal game start !
 		#   "<name_checkerboard> checkerboard state name
-        self.restore_name : str = self.get("Configuration", 'restore', default="None")
+        self.restore_name : Optional[str] = self.get("Configuration", 'restore', default=None)
         
 		# "history_database" : activation of historical game storage on database
 		# 	N.B.: if omitted, storing does not occur !
 		#   "<name_database> database name for game to storage
-        self.history_db_name : str = self.get("Configuration", 'history_database', default="None")
+        self.history_db_name : Optional[str] = self.get("Configuration", 'history_database', default=None)
         
-		# "view_database" : database name from which to view the game
-		#   N.B.: valid only in 'view' mode !
-		#   "<name_database> database name from archive /database
-        self.view_db_name : str = self.get("Configuration", "view_database", default="None")
+        # "import_pdn" : PDN name from which to view the game
+        #   N.B.: valid only in 'view' mode !
+        #   "<name_pdn> PDN name for import/view
+        self.import_pdn_name : Optional[str] = self.get("Configuration", "import_pdn", default=None)
         
-		# "view_id" : game identifier to view
-		#   N.B.: valid only in 'view' mode !
-		#   "<id> game identifier in the chosen database
-        self.view_id : int = self.get("Configuration", 'view_id', default=0)
+        # "pk_game" : game identifier to view
+        #   N.B.: valid only in 'view' mode !
+        #   "<pk_game> game identifier in the chosen database (primary key=datetime)
+        #   N.B.: se PDN il time determina il numero della partita con stessa data !
+        self.pk_game : Optional[str] = self.get("Configuration", 'pk_game', default=None)
         

@@ -12,19 +12,28 @@
 #   "view" view checkers game from archive
 #   "data" Unsupervised Learning (UL) data extraction
 
-# "player1" : type of decision engine for player 1
+# "player1_name" : identification player 1
+#   "<name_player> name player for storage data
+ 
+# "player1_engine" : type of decision engine for player 1
 #   N.B.: valid only in 'play' mode !
-#   "manual" mouse or keyboard moves
+#   "player" mouse or keyboard moves
 #   "classic" MiniMax + Alpha-Beta Pruning
 #   "SL" Supervised Learning
 #   "RL" Reinforcement Learning
 
-# "player2" : type of decision engine for player 2
+# "player2_name" : identification player 2
+#   "<name_player> name player for storage data
+ 
+# "player2_engine" : type of decision engine for player 2
 #   N.B.: valid only in 'play' mode !
-#   "manual" mouse or keyboard moves
+#   "player" mouse or keyboard moves
 #   "classic" MiniMax + Alpha-Beta Pruning
 #   "supervised" Supervised Learning (SL)
 #   "reinforcement" Reinforcement Learning (RL)
+
+# "parity_move" : massimo numero di mosse senza che venga catturato alcun pezzo e 
+# senza che nessuna pedina si sia mossa (conteggio su entrambi i giocatori)
 
 # "restore" : restore checkerboards state from archive /restores
 #   N.B.: delete option if normal game start !
@@ -34,20 +43,22 @@
 # 	N.B.: if omitted, storing does not occur !
 #   "<name_database> database name for game to storage
 
-# "view_database" : database name from which to view the game
+# "import_pdn" : PDN name from which to view the game
 #   N.B.: valid only in 'view' mode !
-#   "<name_database> database name from archive /database
+#   "<name_pdn> PDN name for import/view
 
-# "view_id" : game identifier to view
+# "pk_game" : game identifier to view
 #   N.B.: valid only in 'view' mode !
-#   "<id> game identifier in the chosen database
+#   "<pk_game> game identifier in the chosen database (primary key=datetime)
+#   N.B.: se PDN il time determina il numero della partita con stessa data !
+
 
 # N.B.: TODO UL type option (with archive /dataset) !
 #   N.B.: valid only in 'data' mode !
 
 ### Note ###
 
-+ aggiungere opzione 'player1' e 'player2' per assegnare a ciascuno l'engine (manuale, autom. classico, autom. ML).
++ aggiungere opzione 'player1_engine' e 'player2_engine' per assegnare a ciascuno l'engine (player, autom. classico, autom. ML). Invece 'player1_name' e 'player2_name' identificano i giocatori per i dati storici.
 
 + aggiungere opzione 'mode' per modalità operativa (play, view, data).
 
@@ -76,9 +87,9 @@ La deselezione al termine percorso delle celle permesse era avvenuta con l'ultim
 
 - gestione mosse : puo essere spostamento semplice o spostamento con cattura, anche multiplo. Prevedere stato avanzamento a dama.
 Alcuni PDN riportano solo la cella iniziale e destinazione ma non quelle eventuali intermedie (indicando però come separatore numeri celle con 'x' per le catture anziche '-'). 
-Se conversione PDN-database vengono esplicitate, se mosse manuali vengono eseguite per step (visualizzazione in tempo reale ogni step) infine con ML vengono ancora esplicitate (ma visualizzazione rimandata dopo la ricezione della mossa completa anche se animata a step).
+Se conversione PDN-database vengono esplicitate, se mosse con engone 'player' vengono eseguite per step (visualizzazione in tempo reale ogni step) infine con ML vengono ancora esplicitate (ma visualizzazione rimandata dopo la ricezione della mossa completa anche se animata a step).
 
-+ la gestione 'view' permette di visionare le partite salvate sui database. Devono essere configurato il 'mode' come 'view' e sui token 'view_database' specificare il nome e 'view_id' la partita.
++ la gestione 'view' permette di visionare le partite salvate sui database. Devono essere configurato il 'mode' come 'view' e sui token 'history_database' specificare il nome e 'pk_game' la partita.
 Per avanzare di una mossa click tasto sinistro sulla bar in basso o in alto dei player indistintamente, tenendo premuto per avanzamento continuo. Se tasto destro torna alla mossa precedente, se mantenuto continua il playback. 
 Con i tasti usare le frecce avanti o indietro per singola mossa. Mantenute per continuo avanti o indietro.
 Lo scorrimento mosse è ciclico e visibile nelle bar dei player.
