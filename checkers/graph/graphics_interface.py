@@ -33,6 +33,13 @@ class GraphicsInterface(ABC):
         pass
 
     @abstractmethod
+    def refresh_timers(self):            
+        """
+        Timers
+        """
+        pass
+
+    @abstractmethod
     def refresh_screen(self):
         """
         Renders frames

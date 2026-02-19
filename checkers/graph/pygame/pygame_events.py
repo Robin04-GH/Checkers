@@ -70,10 +70,7 @@ class PygameEventManager:
             # self.debug(f"dark_cell={_id_dark_cell}")
             self.state.set_selected_cell(_id_dark_cell)
         elif self.state.state_moving is EnumPygameMoving.M_DESTINATION:
-            _coor_constrain = self.state.constrain_position(Coordinates2D(col=x, row=y))
-            _coor_filtered = self.state.constrain_filtered(_coor_constrain)
-            _index = self.state.inside_destinations(_coor_filtered)
-            self.sender_move(_index)
+            self.state.constrain_position_mouse(Coordinates2D(col=x, row=y))
 
     # Keyboard event
     def on_key_down(self, event:Event):
@@ -156,8 +153,16 @@ class PygameEventManager:
                 self.sender.destinated_cell(index)
 
     def choose_move(self, key_idx:int):
-        if self.state.state_moving is EnumPygameMoving.M_DESTINATION:
-            _index = self.state.index_destinations(key_idx)
+        if self.state.state_moving is EnumPygameMoving.M_DESTINATION:            
+            self.state.set_position_keyboard(key_idx)
+
+    def event_timer(self, elapsed:int):
+        #self.counter += 1
+        #print(f"Counter_timer = {self.counter}")
+        self.state.scan_cell_timer()
+
+        _index = self.state.moving_timer(elapsed)
+        if _index != None:
             self.sender_move(_index)
 
     # con argomenti globali : debug("message {}, {}", var1, var2)
@@ -183,8 +188,3 @@ class PygameEventManager:
         pygame.KEYDOWN : on_key_down,
         pygame.KEYUP : on_key_up,
     }
-
-# + 1) move
-# - 2) filtro movimenti
-# - 3) vincoli movimenti (proiezione se segmenti, demoltiplicatore con modulo del rapporto coordinate min/max)
-# - 4) blending

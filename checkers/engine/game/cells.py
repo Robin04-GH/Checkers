@@ -40,6 +40,15 @@ class Coordinates2D:
         if other != None:
             return Coordinates2D(self.col + other.col, self.row + other.row)
 
+    def __iadd__(self, other: Coordinates2D)->Coordinates2D:
+        """
+        Override += operator.
+        @param other: Other coordinates that we are summed.
+        """
+
+        if other != None:
+            return Coordinates2D(self.col + other.col, self.row + other.row)
+
     def __sub__(self, other: Coordinates2D)->Coordinates2D:
         """
         Override - operator.

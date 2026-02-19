@@ -83,7 +83,7 @@ class PygameLayers:
         self.validate_rect(self._board_layer.get_rect(), EnumLayerMask.L_MASK_BOARD)
 
     def draw_cell(self, cell:PygameCell):
-        self._raw_draw_cell(self._highlight_layer, cell.get_color_cell(), cell.get_rect())
+        self._raw_draw_cell(self._highlight_layer, cell.get_color_blend(), cell.get_rect())
         self.validate_rect(
             cell.get_rect(), 
             EnumLayerMask.L_MASK_HIGHLIGHT_ON if cell.is_highlighted() else EnumLayerMask.L_MASK_HIGHLIGHT_OFF
@@ -93,7 +93,7 @@ class PygameLayers:
         if cell.piece != None:
             self._raw_draw_piece(
                 self._pieces_layer, 
-                cell.piece.get_color_area(), 
+                cell.piece.get_color_blend(), 
                 cell.piece.get_color_border(), 
                 cell.get_center(),
                 cell.piece.is_king

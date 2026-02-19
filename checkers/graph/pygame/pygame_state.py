@@ -24,7 +24,7 @@ class PygameState(PygameLayers, Constrain):   # MovingState
                     _id_dark_cell : int = Cells.coord2index(Coordinates2D(col, row))
                     Cells.check_valid_cell(_id_dark_cell)
                     self.state_checkerboard[_id_dark_cell] = PygameCell(_id_dark_cell)
-        #self.counter : int = 0
+        self.active_cell_timers : list[int] = []
 
     def reset(self):
         for (_, _cell) in self.state_checkerboard.items():
@@ -61,14 +61,15 @@ class PygameState(PygameLayers, Constrain):   # MovingState
         self.selection_cells = cells
         for _id_dark_cell in self.selection_cells:
             _cell = self.get_cell(_id_dark_cell)
-            _cell.state = EnumStateCell.C_SELECTION
+            _cell.set_state(EnumStateCell.C_SELECTION) #, True)
+            #self.initialize_cell_timer(_cell)
             self.draw_cell(_cell)
         self.state_moving = EnumPygameMoving.M_SELECTION
 
     def delete_selection_cells(self):
         for _id_dark_cell in self.selection_cells:
             _cell : PygameCell = self.get_cell(_id_dark_cell)
-            _cell.state = EnumStateCell.C_NORMAL
+            _cell.set_state(EnumStateCell.C_NORMAL)
             self.draw_cell(_cell)
         self.selection_cells = ()
 
@@ -85,7 +86,7 @@ class PygameState(PygameLayers, Constrain):   # MovingState
             if Cells.is_valid_cell(id_dark_cell):
                 _cell : PygameCell = self.get_cell(id_dark_cell)
                 # E' possibile selezionare solo pezzi in celle in EnumStateCell.C_SELECTION
-                if (_cell.state == EnumStateCell.C_SELECTION):
+                if _cell.state is EnumStateCell.C_SELECTION:
                     _cell.piece.set_state(EnumStatePiece.P_SELECTED)
                     self.draw_piece_fix(_cell)
                     self.selected_cell = id_dark_cell
@@ -105,11 +106,12 @@ class PygameState(PygameLayers, Constrain):   # MovingState
     def start_moving(self, id_dark_cell:int)->bool:
         if Cells.is_valid_cell(id_dark_cell):
             _cell : PygameCell = self.get_cell(id_dark_cell)
-            if _cell.state == EnumStateCell.C_SELECTION:
+            if _cell.state is EnumStateCell.C_SELECTION:
                 if _cell.piece.state == EnumStatePiece.P_SELECTED and self.selected_cell == id_dark_cell:
                     # Se cella selezionabile con pezzo selezionato, il pezzo viene spostato dal layer dei
                     # pezzi statici a quello muovibile
                     self.delete_selection_cells()
+                    self.init_coordinates(_cell.get_center())
                     self.piece_moving = _cell.piece
                     _cell.piece = None
                     self.initialize_move(_cell)
@@ -145,6 +147,10 @@ class PygameState(PygameLayers, Constrain):   # MovingState
         return _move
 
     def set_destination_cells(self, dest_cells:DestCellsType, previous_index:int):
+        # N.B.: potrei perdere la selezione in attesa delle celle destinazione !
+        if not Cells.is_valid_cell(self.actual_cell):            
+            return
+        
         self.destination_cells = dest_cells
         self.previous_index = previous_index
         
@@ -152,11 +158,13 @@ class PygameState(PygameLayers, Constrain):   # MovingState
         for _index, _id_dark_cell in enumerate(self.destination_cells):
             if Cells.is_valid_cell(_id_dark_cell):
                 _cell = self.get_cell(_id_dark_cell)
-                _cell.state = (
+                _cell.set_state(
                     EnumStateCell.C_MOVEMENT_FW 
                     if _index != self.previous_index 
                     else EnumStateCell.C_MOVEMENT_RV
+                    # True
                 )
+                #self.initialize_cell_timer(_cell)
                 self.draw_cell(_cell)
 
                 _dest_center.append(_cell.get_center())
@@ -173,7 +181,7 @@ class PygameState(PygameLayers, Constrain):   # MovingState
         for _id_dark_cell in self.destination_cells:
             if Cells.is_valid_cell(_id_dark_cell):
                 _cell : PygameCell = self.get_cell(_id_dark_cell)
-                _cell.state = EnumStateCell.C_NORMAL
+                _cell.set_state(EnumStateCell.C_NORMAL)
                 self.draw_cell(_cell)
         self.destination_cells = (-1, -1, -1, -1)
 
@@ -232,8 +240,9 @@ class PygameState(PygameLayers, Constrain):   # MovingState
             if _cell.piece == None:
                 raise KeyError(f"Class PygameState, set_captured_cell(): specified id cell {id_dark_cell} is empty !")
 
-            _cell.piece.set_state(EnumStatePiece.P_CAPTURED if is_forward else EnumStatePiece.P_NORMAL)
-            self.draw_piece_fix(_cell)
+            _cell.piece.set_state(EnumStatePiece.P_CAPTURED if is_forward else EnumStatePiece.P_NORMAL, True)
+            #self.draw_piece_fix(_cell)
+            self.initialize_cell_timer(_cell)
 
     def set_destinated_cell(self, index:int):
         _captured_cell : int = self.check_capture_cells(self.actual_cell, self.destination_cells[index])
@@ -255,14 +264,12 @@ class PygameState(PygameLayers, Constrain):   # MovingState
 
         self.state_moving = EnumPygameMoving.M_DESTINATED
 
-    def index_destinations(self, index:int)->int:
+    def set_position_keyboard(self, index:int):
         if (0 <= index < MAX_CELL_MOVE):
             _id_dark_cell = self.destination_cells[index]
             if Cells.is_valid_cell(_id_dark_cell):
                 _cell = self.get_cell(_id_dark_cell)  
-                self.draw_piece_move(_cell.get_center())
-                return index
-        return -1
+                self.set_coor_constrained(_cell.get_center())
     
     def promoted_king(self, id_dark_cell:int):
         if Cells.is_valid_cell(id_dark_cell):
@@ -272,8 +279,32 @@ class PygameState(PygameLayers, Constrain):   # MovingState
             _cell.piece.promotion_king()
             self.draw_piece_fix(_cell)
 
-    def refresh_timer(self):
-        #self.counter += 1
-        #print(f"Counter_timer = {self.counter}")
-        pass
+    def initialize_cell_timer(self, cell:PygameCell):
+        _id : int = cell.id
+        if _id not in self.active_cell_timers:
+            self.active_cell_timers.append(_id)
 
+    def scan_cell_timer(self):
+        for _id_dark_cell in self.active_cell_timers:
+            _cell : PygameCell = self.get_cell(_id_dark_cell)
+            if _cell.timer == None and (_cell.piece == None or _cell.piece.timer == None):
+                self.active_cell_timers.remove(_id_dark_cell)
+            else:
+                if _cell.timer != None:
+                    self.draw_cell(_cell)              
+                if _cell.piece != None:
+                    if _cell.piece.timer != None:
+                        self.draw_piece_fix(_cell) 
+
+    def moving_timer(self, elapsed:int)->Optional[int]:
+        _index : Optional[int] = None
+
+        if self.piece_moving != None:
+            # self.constrain_filtered(self.get_coor_constrained())
+            # self.smoothing_filtered(self.get_coor_constrained())
+            self.critically_damped_spring(self.get_coor_constrained(), elapsed)
+            # self.easing_filtered(self.get_coor_constrained(), self.get_coef_constrained())
+
+            _index = self.inside_destinations(self.get_coor_filtered())
+        
+        return _index

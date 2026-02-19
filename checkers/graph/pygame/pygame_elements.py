@@ -1,11 +1,53 @@
 import enum
-from typing import Optional
+from typing import Optional, Callable
 from checkers.types import ColorType, RectType
-from checkers.constant import MAX_MAN, MAX_KING, CELL_WIDTH, CELL_HEIGHT
+from checkers.constant import MAX_MAN, MAX_KING, CELL_WIDTH, CELL_HEIGHT, TIMER_PRESCALER, BLENDING_DURATION
 from checkers.graph.pygame.colors import Colors
 from checkers.engine.game.cells import Coordinates2D, Cells
 from checkers.engine.game.pieces import EnumPlayersColor, Pieces
 check_valid_piece = Pieces.check_valid_piece
+
+class PygameBlending:
+    """
+    """
+
+    def __init__(self, callback: Callable[[], ColorType]):
+        self.get_color_object = callback
+        self.timer : Optional[int] = None
+        self.color_init : Colors = self.get_color_object()
+                
+    def initialize_blending(self):        
+        if self.timer != None:
+            _t : float = self.timer / BLENDING_DURATION
+            _t = max(0.0, min(1.0, _t))
+            self.color_init = PygameBlending.interpolate_color(self.color_init, self.get_color_object(), _t)
+        else:
+            self.color_init = self.get_color_object()
+        self.timer = 0
+
+    @staticmethod
+    def interpolate_color(c0:ColorType, c1:ColorType, t:float)->ColorType:
+        return (
+                c0[0] + (c1[0] - c0[0]) * t,
+                c0[1] + (c1[1] - c0[1]) * t,
+                c0[2] + (c1[2] - c0[2]) * t,
+                c0[3] + (c1[3] - c0[3]) * t
+            )
+
+    def update_blending(self)->ColorType:
+        self.timer += TIMER_PRESCALER
+        _t : float = self.timer / BLENDING_DURATION
+        _t = max(0.0, min(1.0, _t))
+        if self.timer >= BLENDING_DURATION:
+            self.timer = None
+            self.color_init = self.get_color_object()
+        return PygameBlending.interpolate_color(self.color_init, self.get_color_object(), _t)
+
+    def get_color_blend(self)->ColorType:
+        if self.timer != None:
+            return self.update_blending()
+        else:
+            return self.get_color_object()
 
 # Classe per definire lo stato dei pezzi
 @enum.unique
@@ -14,7 +56,7 @@ class EnumStatePiece(enum.Enum):
     P_SELECTED = 1
     P_CAPTURED = 2
 
-class PygamePiece:
+class PygamePiece(PygameBlending):
     """
     """
 
@@ -24,6 +66,8 @@ class PygamePiece:
         self.player : EnumPlayersColor = EnumPlayersColor.P_LIGHT if id_piece > 0 else EnumPlayersColor.P_DARK
         self.is_king : bool = True if MAX_MAN < abs(id_piece) <= MAX_KING else False
         self.state = EnumStatePiece.P_NORMAL
+        # N.B.: dopo 'self.state' perche usata in 'self.get_color_area' !
+        super().__init__(self.get_color_area)
 
     def promotion_king(self):
         if not self.is_king:
@@ -36,8 +80,11 @@ class PygamePiece:
             else:
                 raise ValueError(f"The piece ID {self.id_piece} is already a king and cannot be promoted yet !")
 
-    def set_state(self, state:EnumStatePiece):
-        self.state = state
+    def set_state(self, state:EnumStatePiece, blending:bool=False):
+        if self.state != state:
+            if blending:
+                self.initialize_blending()
+            self.state = state
 
     def get_color_border(self)->ColorType:
         _color = (
@@ -65,7 +112,7 @@ class EnumStateCell(enum.Enum):
     C_MOVEMENT_FW = 2
     C_MOVEMENT_RV = 3
 
-class PygameCell:
+class PygameCell(PygameBlending):
     """
     """
 
@@ -82,12 +129,23 @@ class PygameCell:
             (self.col * CELL_WIDTH) + CELL_WIDTH // 2,
             (self.row * CELL_HEIGHT) + CELL_HEIGHT // 2
         )
-        self.reset()
+        self.state : EnumStateCell = EnumStateCell.C_NORMAL        
+        self.piece : Optional[PygamePiece] = None
+        # N.B.: dopo 'self.state' perche usata in 'self.get_color_cell' !
+        super().__init__(self.get_color_cell)
 
     def reset(self):
-        self.state : EnumStateCell = EnumStateCell.C_NORMAL
-        self.piece : Optional[PygamePiece] = None
+        self.set_state(EnumStateCell.C_NORMAL)
+        self.piece = None
+        self.timer = None
+        self.color_init = self.get_color_cell()
 
+    def set_state(self, state:EnumStateCell, blending:bool=False):
+        if self.state != state:
+            if blending:
+                self.initialize_blending()
+            self.state = state
+    
     def get_rect(self)->RectType:
         return self._rect
 
@@ -105,3 +163,4 @@ class PygameCell:
     
     def is_highlighted(self):
         return self.state is not EnumStateCell.C_NORMAL
+        
