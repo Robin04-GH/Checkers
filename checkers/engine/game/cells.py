@@ -113,17 +113,6 @@ class Cells:
     opponent pieces. 
     """
 
-    #def __init__(self):
-    #    """
-    #    Construction of cell tuples for simple moves and captures through 
-    #    the compressed checkerboard indices to the dark cells only.
-    #
-    #    @param -: .
-    #    """
-    #
-    #    self._simple_moves = tuple(Cells.find_move_cells(i, EnumMove.M_SIMPLE.value) for i in range(MAX_DARK_CELLS))
-    #    self._capture_moves = tuple(Cells.find_move_cells(i, EnumMove.M_CAPTURE.value) for i in range(MAX_DARK_CELLS))
-
     @classmethod
     def initialize(cls):
         cls._simple_moves = tuple(
@@ -188,12 +177,12 @@ class Cells:
 
     @staticmethod
     def get_moves(index_dark_cell:int, type:EnumMove, mask:Optional[tuple[bool, bool, bool, bool]]=None)->DestCellsType:
-        if not Cells.is_valid_cell(index_dark_cell) or type is EnumMove.M_NONE:
+        if not Cells.is_valid_cell(index_dark_cell) or type == EnumMove.M_NONE:
             return (-1, -1, -1, -1)
 
         return (
             Cells.get_simple_moves(index_dark_cell, mask)
-            if type is EnumMove.M_SIMPLE
+            if type == EnumMove.M_SIMPLE
             else Cells.get_capture_moves(index_dark_cell, mask)
         )
 

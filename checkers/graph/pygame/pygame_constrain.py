@@ -2,7 +2,6 @@
 # just add this directive (Python >=3.10)
 from __future__ import annotations
 import enum, math
-from dataclasses import dataclass
 from checkers.types import DestCellsType
 from checkers.engine.game.cells import Coordinates2D
 
@@ -21,7 +20,7 @@ class Vectors2D(NamedTuple):
     def __iadd__(self, other:Vectors2D)->Vectors2D:
         return Vectors2D(self.x + other.x, self.y + other.y)
 
-# Classe per definire lo stato dei pezzi
+# Class to define the state of the pieces
 @enum.unique
 class EnumPygameMoving(enum.Enum):
     M_IDLE = 0
@@ -30,11 +29,13 @@ class EnumPygameMoving(enum.Enum):
     M_DESTINATION = 3
     M_DESTINATED = 4
 
-#@dataclass
 class MovingState:
-
+    """
+    Temporary data class during piece movement for possible recovery.
+    The board state is updated only after validation.
+    """
+    
     def __init__(self):
-        super().__init__()
         self.state_moving : EnumPygameMoving = EnumPygameMoving.M_IDLE
         self.selection_cells : tuple[int, ...] = ()
         self.selected_cell : int = -1
@@ -44,12 +45,10 @@ class MovingState:
         self.move_destinations : list[int] = []
         self.move_captures : list[int] = []                
 
-    # Per essere cooperativa
-    #def __post_init__(self):
-    #    super().init__()
-
 class Filter:
     """
+    A class for filtering the target position of the workpiece.
+    It offers various techniques.
     """
 
     def __init__(self):
@@ -65,49 +64,49 @@ class Filter:
 
     def constrain_filtered(self, coor_constrained:Coordinates2D):
         _incr : Coordinates2D = Coordinates2D(
-            (coor_constrained.x - self._coor_filtered.x) * 0.75,
-            (coor_constrained.y - self._coor_filtered.y) * 0.75
+            (coor_constrained.x - self._coor_filtered.x) * 0.30,
+            (coor_constrained.y - self._coor_filtered.y) * 0.30
         )
         self._coor_filtered += _incr
 
     def smoothing_filtered(self, coor_constrained:Coordinates2D):
-        _alpha = 0.50  # più piccolo = più morbido
-        _pos_x = self._coor_filtered.x * (1 - _alpha) + coor_constrained.x * _alpha
-        _pos_y = self._coor_filtered.y * (1 - _alpha) + coor_constrained.y * _alpha
-        self._coor_filtered = Coordinates2D(_pos_x, _pos_y)
+        alpha = 0.25  # smaller = softer
+        pos_x = self._coor_filtered.x * (1 - alpha) + coor_constrained.x * alpha
+        pos_y = self._coor_filtered.y * (1 - alpha) + coor_constrained.y * alpha
+        self._coor_filtered = Coordinates2D(pos_x, pos_y)
 
     def speed_clamp_filtered(self, coor_constrained:Coordinates2D):
-        _dx = coor_constrained.x - self._coor_filtered.x
-        _dy = coor_constrained.y - self._coor_filtered.y
-        _dist = math.hypot(_dx, _dy)
-        _max_speed = 4  # pixel per frame
-        if _dist > _max_speed:
-            _scale = _max_speed / _dist
-            _dx *= _scale
-            _dy *= _scale
-        self._coor_filtered += Coordinates2D(_dx, _dy)
+        dx = coor_constrained.x - self._coor_filtered.x
+        dy = coor_constrained.y - self._coor_filtered.y
+        dist = math.hypot(dx, dy)
+        max_speed = 12  # pixels per frame
+        if dist > max_speed:
+            scale = max_speed / dist
+            dx *= scale
+            dy *= scale
+        self._coor_filtered += Coordinates2D(dx, dy)
 
     def critically_damped_spring(self, coor_constrained:Coordinates2D, elapsed:int):
         # parameters
-        _stiffness = 16.0
-        _damping = 1.4 * math.sqrt(_stiffness)  # critical smoothing
+        stiffness = 200.0
+        damping = 2.0 * math.sqrt(stiffness)  # critical smoothing
         # _damping = 1.2 * math.sqrt(_stiffness)  # elastic spring
-        _dt = elapsed / 1000.0
+        dt = elapsed / 1000.0
         # strenght toward the target
-        _fx = _stiffness * (coor_constrained.x - self._coor_filtered.x)
-        _fy = _stiffness * (coor_constrained.y - self._coor_filtered.y)
+        fx = stiffness * (coor_constrained.x - self._coor_filtered.x)
+        fy = stiffness * (coor_constrained.y - self._coor_filtered.y)
         # update velocity
-        _inc_speed = Vectors2D(
-            (_fx - _damping * self._speed_filtered.x) * _dt,
-            (_fy - _damping * self._speed_filtered.y) * _dt
+        inc_speed = Vectors2D(
+            (fx - damping * self._speed_filtered.x) * dt,
+            (fy - damping * self._speed_filtered.y) * dt
         )
-        self._speed_filtered += _inc_speed
+        self._speed_filtered += inc_speed
         # update position
-        _inc_coor = Coordinates2D(
-            self._speed_filtered.x * _dt,
-            self._speed_filtered.y * _dt
+        inc_coor = Coordinates2D(
+            self._speed_filtered.x * dt,
+            self._speed_filtered.y * dt
         )
-        self._coor_filtered += _inc_coor
+        self._coor_filtered += inc_coor
 
     def clamp(self, value:float, min_value:float, max_value:float)->float:
         return max(min_value, min(value, max_value))
@@ -122,17 +121,18 @@ class Filter:
         return 1 - pow(-2 * t + 2, 2) / 2
 
     def easing_filtered(self, coor_constrained:Coordinates2D, t:float):
-        # _t = self.clamp(dist / max_dist, 0, 1)
-        _ease = t*t*(3 - 2*t)  # smoothstep
+        # t = self.clamp(dist / max_dist, 0, 1)
+        ease = t*t*(3 - 2*t)  # smoothstep
         # _ease = self.easy_in_out_quad(t)
-        _pos_coor = Coordinates2D(
-            round(self.lerp(self._coor_filtered.x, coor_constrained.x, _ease)),
-            round(self.lerp(self._coor_filtered.y, coor_constrained.y, _ease))
+        pos_coor = Coordinates2D(
+            round(self.lerp(self._coor_filtered.x, coor_constrained.x, ease)),
+            round(self.lerp(self._coor_filtered.y, coor_constrained.y, ease))
         )
-        self._coor_filtered = _pos_coor
+        self._coor_filtered = pos_coor
 
 class Constrain(MovingState, Filter):
     """
+    Class that constrains the movements of pieces during the move
     """
     
     def __init__(self):
@@ -163,31 +163,31 @@ class Constrain(MovingState, Filter):
     def get_coef_constrained(self)->float:
         return self._coef_constrained
 
-    # demoltiplicatore con modulo del rapporto coordinate min/max
+    # Demultiplier with min/max coordinate ratio module
     @staticmethod
     def _normalization(point:Coordinates2D)->float:
         if point.x == 0 or point.y == 0:
             return 0.0
 
-        _abs_point = Coordinates2D(abs(point.x), abs(point.y))
-        _min = min(_abs_point.x, _abs_point.y)
-        _max = max(_abs_point.x, _abs_point.y)
-        return _min / _max
+        abs_point = Coordinates2D(abs(point.x), abs(point.y))
+        min = min(abs_point.x, abs_point.y)
+        max = max(abs_point.x, abs_point.y)
+        return min / max
 
-    # Point O (origin), Point D (destination), Point M (mouse)    
-    # Trovare la proiezione di M sulla retta OD clampata all’interno del segmento [0 <= t <= 1], 
-    # ovvero il punto del segmento più vicino ad M.
-    # N.B.: le coordinate D ed M sono passate in relativo rispetto al quelle di O !
+    # Point O (origin), Point D (destination), Point M (mouse)  
+    # Find the projection of M on the line OD clamped inside the segment [0 <= t <= 1],
+    # that is, the point of the segment closest to M.
+    # Hint: the coordinates D and M are relative to those of O !
     @staticmethod
     def _closest_point_on_segment_relative(d:Coordinates2D, m:Coordinates2D)->tuple[Coordinates2D, float]:
         if d.x == 0 and d.y == 0:
             return (0, 0)
 
-        _d = d.x*d.x + d.y*d.y
-        _t = ((m.x*d.x + m.y*d.y) / _d)
+        d2 = d.x*d.x + d.y*d.y
+        t = ((m.x*d.x + m.y*d.y) / d2)
         # clamp and normalization
-        _t = max(0.0, min(1.0, _t)) # * Constrain._normalization(m)
-        return Coordinates2D(round(_t * d.x), round(_t * d.y)), _t
+        t = max(0.0, min(1.0, t)) # * Constrain._normalization(m)
+        return Coordinates2D(round(t * d.x), round(t * d.y)), t
 
     def constrain_cartesian_dial(self, pixel:Coordinates2D)->int:
         if pixel.x == self._actual_center.x or pixel.y == self._actual_center.y:
@@ -209,20 +209,19 @@ class Constrain(MovingState, Filter):
                 return 2
             
     def constrain_position_mouse(self, pixel:Coordinates2D):
-        _index : int = self.constrain_cartesian_dial(pixel)
-        if _index < 0:
+        index : int = self.constrain_cartesian_dial(pixel)
+        if index < 0:
             self._coor_constrained = self._actual_center
             return
 
-        _d = self._destination_centers[_index]
-        if _d == None:
+        d = self._destination_centers[index]
+        if d == None:
             self._coor_constrained = self._actual_center
             return
 
-        _d_rel = _d.__sub__(self._actual_center)
-        _m_rel = pixel.__sub__(self._actual_center)
-        _coor, _t = Constrain._closest_point_on_segment_relative(_d_rel, _m_rel)
-        self._coor_constrained = _coor.__add__(self._actual_center)
-        self._coef_constrained = _t
-        # self._coor_constrained = Constrain._closest_point_on_segment_relative(_d_rel, _m_rel).__add__(self._actual_center)
+        d_rel = d.__sub__(self._actual_center)
+        m_rel = pixel.__sub__(self._actual_center)
+        coor, t = Constrain._closest_point_on_segment_relative(d_rel, m_rel)
+        self._coor_constrained = coor.__add__(self._actual_center)
+        self._coef_constrained = t
         

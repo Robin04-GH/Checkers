@@ -26,9 +26,9 @@ class Score:
     - type move (single/capture)
     storage last capture cell
 
-    N.B.: lo score è uno strumento per individuare tutte le possibili mosse in base alle regole del gioco.
-    L'insieme di mosse risultanti tutte con stesso score (il massimo ottenibile) sarà poi oggetto del 
-    processo di inferenza !
+    Hint: the score is a tool for identifying all possible moves based on the rules 
+    of the game. The set of moves that all have the same score (the maximum achievable) 
+    will then be the subject of the inference process !
     """
 
     def set_single(self)->Score:
@@ -178,21 +178,22 @@ class Move:
     destinations : tuple[int]
     captures : tuple[int] = ()
     """
-    Classe tipo per rappresentare una mossa
+    Type class to represent a move
     """
 
-    # Il metodo '__post_init__' viene chiamato dopo la creazione dell’oggetto, 
-    # quindi è il posto giusto per fare validazioni :
-    #  1) la validita delle cells è considerata implicita nella costruzione precedente delle liste
+    # The '__post_init__' method is called after the object is created,
+    # so it's the right place to perform validations:
+    # 1) the validity of the cells is considered implicit in the previous construction 
+    # of the lists
     def __post_init__(self):
-        # 2) verifica se captures è vuota, len destinations = 1 : caso 'move simple'
+        # 2) check if captures is empty, len destinations = 1 : 'move simple' case
         if not self.captures:
             if len(self.destinations) != 1:
                 raise ValueError(
                     f"Class Move, __post_init__(): simple move must have exactly 1 destination, got {len(self.destinations)}"
                 )
 
-        # 3) verifica se len(captures) = len(destinations) : caso 'move capture'
+        # 3) check if len(captures) = len(destinations) : 'move capture' case
         else:
             if len(self.captures) != len(self.destinations):
                 raise ValueError(
@@ -233,8 +234,8 @@ class Move:
         return Move(self.origin, _destinations, _captures)
 
 """
-Note :
-- la cella di origine è esterna a Move, sarà la chiave del dict che ha come value l'albero o set delle mosse.
-  Questo perchè una data cella di origine (rappresenteranno la selezione mosse) è la radice dell'albero che 
-  puo contenere molte mosse.
+Hint: the source cell is external to Move; it will be the key of the dict whose value 
+is the tree or move set.
+This is because a given source cell (representing the move selection) is the root 
+of the tree, which can contain many moves.
 """

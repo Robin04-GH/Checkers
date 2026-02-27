@@ -12,7 +12,7 @@ class GraphOutputReceiving:
         self.move_sequence = move_sequence
 
     def print_string(self, string:str)->int:
-        print(f"Msg=" + string)
+        # print(f"Msg=" + string)
         match string:
             case "QUIT":
                 self.state.exit = True            
@@ -21,19 +21,19 @@ class GraphOutputReceiving:
         return 0
 
     def selected_cell(self, cell:int)->int:
-        print(f"Selected cell {cell}")  
-        if self.move_sequence.get_step() is EnumEngineMoving.MS_ASW_SELECT:
+        # print(f"Selected cell {cell}")  
+        if self.move_sequence.get_step() == EnumEngineMoving.MS_ASW_SELECT:
             self.move_sequence.answer_select(cell)
         return 0
     
     def destinated_cell(self, index:int)->int:
-        print(f"Destinated index {index}")  
-        if self.move_sequence.get_step() is EnumEngineMoving.MS_ASW_DESTINATION:
+        # print(f"Destinated index {index}")  
+        if self.move_sequence.get_step() == EnumEngineMoving.MS_ASW_DESTINATION:
             self.move_sequence.answer_destination(index)
         return 0
     
     def terminate_move(self, move:Optional[Move])->int:
-        if self.move_sequence.get_step() is not EnumEngineMoving.MS_IDLE:
+        if self.move_sequence.get_step() != EnumEngineMoving.MS_IDLE:
             if move == None:                
                 self.move_sequence.set_step(EnumEngineMoving.MS_QST_SELECT)
             else:

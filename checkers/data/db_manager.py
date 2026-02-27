@@ -1,40 +1,41 @@
 from typing import Optional
-from checkers.data.view_interface import ViewInterface
+from checkers.data.data_interface import DataInterface
 from checkers.engine.inference_interface import InferenceInterface
 from checkers.config_manager import ConfigManager
 from checkers.engine.game.move import Move
 
-class DatabaseManager(ViewInterface):
+class DatabaseManager(DataInterface):
     """
-    Classe gestione database per storico partite.
+    Database management class for match history.
 
-    Il flusso dati dipende dalla configurazione :
-    <mode>  <history_database>  <import_pdn>  <database>    <PDN>       <Descrizione>
+    The data flow depends on the configuration :
+    <mode>  <history_database>  <import_pdn>  <database>    <PDN>       <Description>
       P             -               -           unused      unused      Play
-      P             x               -           WR          unused      Play + storico DB
-      P             -               x           unused      ?           Play                (PDN non gestibile)
-      P             x               x           WR          ?           Play + storico DB   (PDN non gestibile)
-      V             -               -           ?           ?           View non possibile !
-      V             x               -           RD          unused      View da DB    
-      V             -               x           unused      RD          View da PDN
-      V             x               x           WR          RD          View da PDN + storico DB (Import PDN->DB)
+      P             x               -           WR          unused      Play + history DB
+      P             -               x           unused      ?           Play                (unmanageable PDN)
+      P             x               x           WR          ?           Play + history DB   (unmanageable PDN)
+      V             -               -           ?           ?           View not possible !
+      V             x               -           RD          unused      View from DB    
+      V             -               x           unused      RD          View from PDN
+      V             x               x           WR          RD          View from PDN + history DB (Import PDN->DB)
 
-    Struttura database :
-    - Tabella Players (dati giocatori : pk='engine: name', contatori generali)
-    - Tabella Games (dati generali partite : data, giocatori, esito)
-    - Tabella Moves (storico mosse partite)
-    - Tabella States (storico stato scacchiera partite)
-    
+    Database structure:
+    - Players table (player data: pk='engine:name', general counters)
+    - Games table (general game data: date, players, outcome)
+    - Moves table (game move history)
+    - States table (game board state history)
     """
 
     def __init__(self, config:ConfigManager):
-        self._database : str = ""
+        self._config = config
+        self._database: str | None = None
 
     def open_data(self, source:str)->bool:
         self._database = source
-        # self.history_db_name (apre file database)
-        # self.pk_game (se zero parte dalla prima partita)
-        # Dopo l'apertura ho accesso ai metodi che ritornano ID players con colori, puntatore alle mosse ...
+        # self.history_db_name (open database files)
+        # self.pk_game (if zero starts from the first game)
+        # After opening I have access to the methods that return player IDs 
+        # with colors, move pointers...
         pass
 
     def close_data(self):
@@ -42,11 +43,9 @@ class DatabaseManager(ViewInterface):
         pass
 
     def get_players(self, pk_game:str)->tuple[str, str]:
-        # check presenza pk_game
-        # ritorna i nomi dei giocatori (in ordine P_LIGHT, P_DARK)
+        # check pk_game presence
+        # returns the player names (in P_LIGHT, P_DARK order)
         pass
 
-    def get_move(self, num_move:Optional[int]=None)->tuple[int, ...]:
-        # ritorna tuple con cella origine e cella finale
-        # N.B.: il parser usa separatore 'x' per mosse capture, '-' per mosse simple !
+    def get_move(self, index:Optional[int]=None)->Optional[tuple[int, ...]]:
         pass

@@ -5,7 +5,7 @@ import pygame
 import threading
 from checkers.constant import TIMER_PRESCALER
 from checkers.graph.graphics_interface import GraphicsInterface
-from checkers.channels.channel import Gateway
+from checkers.channels.channel import EnumChannelProtocols, Gateway
 from checkers.channels.graph_input import ProtGraphInput
 from checkers.channels.graph_output import ProtGraphOutput
 from checkers.graph.pygame.pygame_state import PygameState
@@ -14,11 +14,12 @@ from checkers.graph.pygame.graph_input_receiving import GraphInputReceiving
 
 class PygameGraphics(GraphicsInterface):
     """
+    Graphics management class on a separate thread
     """
     
     def __init__(self, gateway:Gateway):
         self.gateway = gateway
-        self.sender : ProtGraphOutput = gateway.graph_output.sender
+        self.sender : ProtGraphOutput = gateway.channels[EnumChannelProtocols.C_PROTGRAPHOUTPUT].sender
         self.started_event : threading.Event = threading.Event()
         self.thread = threading.Thread(target=self.main_graph, args=(self.started_event,))   #, daemon=True ?
 
@@ -38,7 +39,8 @@ class PygameGraphics(GraphicsInterface):
 
         # Channel
         self.receiving : ProtGraphInput = GraphInputReceiving(self.state)
-        self.gateway.graph_input.register(self.receiving)
+        self.gateway.channels[EnumChannelProtocols.C_PROTGRAPHINPUT].register(self.receiving)
+
         started_event.set()
 
         self.main_loop()
@@ -55,11 +57,11 @@ class PygameGraphics(GraphicsInterface):
         """
         Timers
         """
-        _now = pygame.time.get_ticks()
-        _elapsed = _now - self.time
-        if _elapsed >= TIMER_PRESCALER:
-            self.time = _now
-            self.event_manager.event_timer(_elapsed)
+        now = pygame.time.get_ticks()
+        elapsed : int = now - self.time
+        if elapsed >= TIMER_PRESCALER:
+            self.time = now
+            self.event_manager.event_timer(elapsed)
 
     def refresh_screen(self):
         """
@@ -73,7 +75,8 @@ class PygameGraphics(GraphicsInterface):
         Calls a logical update function provided by the derived class.
         """
         while self.event_manager.get_running():
-            self.gateway.graph_input.receiver.dispatcher(self.receiving)
+            self.gateway.channels[EnumChannelProtocols.C_PROTGRAPHINPUT].receiver.dispatcher(self.receiving)
+
             self.process_events()
             self.refresh_timers()
             self.refresh_screen() 

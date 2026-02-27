@@ -1,6 +1,5 @@
 from checkers.types import DestCellsType
 from checkers.graph.pygame.pygame_state import PygameState
-from checkers.engine.game.cells import Cells
 
 class GraphInputReceiving:
     """
@@ -10,8 +9,7 @@ class GraphInputReceiving:
         self.state = state
 
     def print_string(self, string:str, value:float)->int:
-        print(f"Msg=" + string + f" Val={value}")
-        # self.state.
+        # print(f"Msg=" + string + f" Val={value}")
         return 0
 
     def reset(self)->int:

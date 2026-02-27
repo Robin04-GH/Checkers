@@ -1,11 +1,11 @@
 from typing import Optional
-from checkers.data.view_interface import ViewInterface
+from checkers.data.data_interface import DataInterface
 
-class PdnManager(ViewInterface):
+class PdnManager(DataInterface):
     """
-    Classe per parsing formato partite in PDN.
-    Usata in modalità 'view' per importazione da PDN->DB con 'history_database' 
-    o semplice visualizzazione partita.
+    Class for parsing game formats in PDN.
+    Used in 'view' mode for importing from PDN->DB with 'history_database'
+    or simply viewing games.    
     """
 
     def __init__(self):
@@ -18,9 +18,9 @@ class PdnManager(ViewInterface):
         pass
 
     def get_players(self, pk_game:str)->tuple[str, str]:
-        # check presenza pk_game
-        # ritorna i nomi dei giocatori (in ordine P_LIGHT, P_DARK)
+        # check pk_game presence
+        # returns the player names (in P_LIGHT, P_DARK order)        
         pass
 
-    def get_move(self, num_move:Optional[int]=None)->tuple[int, ...]:
+    def get_move(self, index:Optional[int]=None)->Optional[tuple[int, ...]]:
         pass

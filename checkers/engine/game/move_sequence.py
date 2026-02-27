@@ -1,21 +1,20 @@
 import enum
 from typing import Optional
 from collections.abc import Generator
-from checkers.types import DestCellsType
 from checkers.channels.graph_input import ProtGraphInput
 from checkers.engine.game.moves_player import MovesPlayer
 from checkers.engine.game.move import Move
 
-# Classe per definire lo stato della MoveSequence
+# Class to define the state of the MoveSequence
 @enum.unique
 class EnumEngineMoving(enum.IntEnum):
     MS_IDLE = 0
-    MS_QST_SELECT = 1,
-    MS_ASW_SELECT = 2,
-    MS_QST_DESTINATION = 3,
-    MS_ASW_DESTINATION = 4,
-    MS_VALIDATED_MOVE = 5,
-    MS_END = 7
+    MS_QST_SELECT = 1
+    MS_ASW_SELECT = 2
+    MS_QST_DESTINATION = 3
+    MS_ASW_DESTINATION = 4
+    MS_VALIDATED_MOVE = 5
+    MS_END = 6
 
 class MoveSequence:
     """
@@ -32,13 +31,13 @@ class MoveSequence:
     def run(self, moves_player:MovesPlayer, move:Optional[Move])->Generator[EnumEngineMoving, None, None]:
         
         steps = {
-            EnumEngineMoving.MS_IDLE : lambda: self.idle(),
-            EnumEngineMoving.MS_QST_SELECT : lambda: self.question_select(),
-            # EnumEngineMoving.MS_ASW_SELECT : lambda: self.answer_select(),
-            EnumEngineMoving.MS_QST_DESTINATION : lambda: self.question_destination(),
-            # EnumEngineMoving.MS_ASW_DESTINATION : lambda: self.answer_destination(),
-            # EnumEngineMoving.MS_VALIDATED_MOVE : lambda: self.validated_move(),
-            EnumEngineMoving.MS_END : lambda: self.end()
+            EnumEngineMoving.MS_IDLE : self.idle,
+            EnumEngineMoving.MS_QST_SELECT : self.question_select,
+            # EnumEngineMoving.MS_ASW_SELECT : self.answer_select,
+            EnumEngineMoving.MS_QST_DESTINATION : self.question_destination,
+            # EnumEngineMoving.MS_ASW_DESTINATION : self.answer_destination,
+            # EnumEngineMoving.MS_VALIDATED_MOVE : self.validated_move,
+            EnumEngineMoving.MS_END : self.end
         }
 
         self.moves_player = moves_player
@@ -47,8 +46,11 @@ class MoveSequence:
         self._step = EnumEngineMoving.MS_QST_SELECT
 
         while self._in_moving: 
-            steps.get(self._step, lambda: self.idle())()
+            handler = steps.get(self._step, self.idle)
+            handler()
             yield self._step
+
+        return
 
     def get_step(self)->EnumEngineMoving:
         return self._step
@@ -62,15 +64,15 @@ class MoveSequence:
     def end(self):
         self._in_moving = False
 
-    # invio msg celle selezionabili
+    # send message to selectable cells
     def question_select(self):
         cells : tuple[int, ...] = self.moves_player.get_all_keys()
         self.sender.selection_cells(cells)
         self._step = EnumEngineMoving.MS_ASW_SELECT
 
-    # attesa risposta cella selezionata
+    # waiting for selected cell response
     def answer_select(self, cell:int):
-        print(cell)
+        # print(cell)
         self.moves_player.initialize_move(cell)
         self._step = EnumEngineMoving.MS_QST_DESTINATION
 
@@ -80,7 +82,7 @@ class MoveSequence:
         self._step = EnumEngineMoving.MS_ASW_DESTINATION
 
     def answer_destination(self, index:int):
-        print(index)
+        # print(index)
         self.moves_player.upgrade_move(index)
         self._step = EnumEngineMoving.MS_QST_DESTINATION
 
@@ -88,6 +90,3 @@ class MoveSequence:
         if self.moves_player.finalize_move(move):
             self.sender.promoted_king(move.destinations[-1])
         self._step = EnumEngineMoving.MS_END
-
-    # N.B.: se durante la sequenza viene rilasciato il mouse dopo la selezione, le fasi transitorie 
-    # della mossa vengono abortite e si torna alle celle selezionabili originarie

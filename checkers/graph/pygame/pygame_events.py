@@ -10,6 +10,11 @@ from checkers.engine.game.cells import Coordinates2D
 
 class PygameEventManager:
     """
+    Pygame event handling class:
+     - system
+     - mouse
+     - keyboard
+     - timer
     """
 
     def __init__(self, state:PygameState, sender : ProtGraphOutput):
@@ -17,23 +22,25 @@ class PygameEventManager:
         self.sender : ProtGraphOutput = sender
         self.running = True
         self._lalt_pressed : False
-        self.debug_event : bool = True
-        self.counter : int = 0
+        self.debug_event : bool = False
+        # self.counter : int = 0
 
     def get_running(self)->bool:
         return self.running
 
     def dispatcher(self, events:list[Event]):
         for event in events:
-            if event.type in self._handlers:
+            if event.type in self.handlers:
+                """
                 if self.debug_event:
-                    # Per dare tempo al debugger di agganciare il contesto
+                    # To give the debugger (VS code) time to catch the context
                     # time.sleep(0.01)
-                    # Per forzare VS code a sincronizzare il frame corrente
+                    # To force VS code to sync the current frame
                     # debugpy.breakpoint()
-                    # Debugger integrato di Python dentro il thread
+                    # Integrated Python debugger inside the thread
                     # pdb.set_trace()
-                    self._handlers[event.type](self, event)
+                """
+                self.handlers[event.type](self, event)
 
     # System event
     def on_quit(self, event:Event):
@@ -51,9 +58,9 @@ class PygameEventManager:
         x, y = event.pos
         self.debug(f"MouseDown(X,Y)={x},{y}")
 
-        if self.state.state_moving is EnumPygameMoving.M_SELECTION:
-            _id_dark_cell : int = self.state.get_cell_from_pos(Coordinates2D(col=x, row=y))
-            self.debug(f"dark_cell={_id_dark_cell}")
+        if self.state.state_moving == EnumPygameMoving.M_SELECTION:
+            id_dark_cell : int = self.state.get_cell_from_pos(Coordinates2D(col=x, row=y))
+            self.debug(f"dark_cell={id_dark_cell}")
             self.start_moving()
 
     def on_mouse_up(self, event:Event):
@@ -65,11 +72,11 @@ class PygameEventManager:
         x, y = event.pos
         #self.debug(f"MouseMotion(X,Y)={x},{y}")
         
-        if self.state.state_moving is EnumPygameMoving.M_SELECTION:
-            _id_dark_cell : int = self.state.get_cell_from_pos(Coordinates2D(col=x, row=y))
-            # self.debug(f"dark_cell={_id_dark_cell}")
-            self.state.set_selected_cell(_id_dark_cell)
-        elif self.state.state_moving is EnumPygameMoving.M_DESTINATION:
+        if self.state.state_moving == EnumPygameMoving.M_SELECTION:
+            id_dark_cell : int = self.state.get_cell_from_pos(Coordinates2D(col=x, row=y))
+            # self.debug(f"dark_cell={id_dark_cell}")
+            self.state.set_selected_cell(id_dark_cell)
+        elif self.state.state_moving == EnumPygameMoving.M_DESTINATION:
             self.state.constrain_position_mouse(Coordinates2D(col=x, row=y))
 
     # Keyboard event
@@ -78,13 +85,13 @@ class PygameEventManager:
             self.debug("Pressed SPACE")
         elif event.key == pygame.K_TAB:
             self.debug("Pressed TAB")
-            if self.state.state_moving is EnumPygameMoving.M_SELECTION:
-                _id_dark_cell = self.state.get_next_selected_cell()
-                self.debug(f"dark_cell={_id_dark_cell}")
-                self.state.set_selected_cell(_id_dark_cell)
+            if self.state.state_moving == EnumPygameMoving.M_SELECTION:
+                id_dark_cell = self.state.get_next_selected_cell()
+                self.debug(f"dark_cell={id_dark_cell}")
+                self.state.set_selected_cell(id_dark_cell)
         elif event.key == pygame.K_RETURN:
             self.debug("Pressed RETURN")
-            if self.state.state_moving is EnumPygameMoving.M_SELECTION:
+            if self.state.state_moving == EnumPygameMoving.M_SELECTION:
                 self.start_moving()
         elif event.key == pygame.K_1:
             self.debug("Pressed 1")
@@ -146,14 +153,14 @@ class PygameEventManager:
         if index != -1:
             self.state.set_destinated_cell(index)
             if index == self.state.previous_index:
-                # annullamento mossa
+                # move cancellation
                 self.sender.destinated_cell(-1)
             else:
-                # avanzamento mossa
+                # move progress
                 self.sender.destinated_cell(index)
 
     def choose_move(self, key_idx:int):
-        if self.state.state_moving is EnumPygameMoving.M_DESTINATION:            
+        if self.state.state_moving == EnumPygameMoving.M_DESTINATION:            
             self.state.set_position_keyboard(key_idx)
 
     def event_timer(self, elapsed:int):
@@ -161,13 +168,13 @@ class PygameEventManager:
         #print(f"Counter_timer = {self.counter}")
         self.state.scan_cell_timer()
 
-        _index = self.state.moving_timer(elapsed)
-        if _index != None:
-            self.sender_move(_index)
+        index = self.state.moving_timer(elapsed)
+        if index != None:
+            self.sender_move(index)
 
-    # con argomenti globali : debug("message {}, {}", var1, var2)
-    # con stile f-string : debug(f"message {var1}, {var2})
-    # Con kwargs per accettare anche parametri nominati (esempio dict)
+    # with global argoments : debug("message {}, {}", var1, var2)
+    # with f-string style : debug(f"message {var1}, {var2})
+    # Using 'kwargs' to accept named parameters as well (example dict)
     def debug(self, msg:str, *args, **kwargs):
         if self.debug_event:
             if args or kwargs:
@@ -175,7 +182,7 @@ class PygameEventManager:
             else:
                 print(msg)
 
-    _handlers : dict[Event, Callable[[Event], None]] = {
+    handlers : dict[Event, Callable[[Event], None]] = {
         # System
         pygame.QUIT : on_quit,
         pygame.WINDOWFOCUSGAINED : on_focus_gained,

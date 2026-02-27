@@ -3,21 +3,21 @@ from dataclasses import dataclass
 
 @dataclass
 class PlayerStats:
-    # N.B.: 'engine + ": " + name' rappresenta la chiave primaria nel database ! 
+    # Hint: 'engine + ": " + name' represents the primary key in the database!
     # State (local)
-    # Le variabili State sono caricate dal config/restore.
+    # State variables are loaded by config/restore.
     engine : str = ""
     name : str = ""
-    # N.B.: il colore è implicito nella dict_players = { color : Player }
+    # Hint: the color is implicit in the dict_players = { color : Player }
     # self.color : EnumPlayersColor = EnumPlayersColor.P_LIGHT
 
     # Game (restore)
-    # Le variabili Game dal restore (counter_man/king ricalcolate dallo stato scacchiera)
+    # Game variables from restore (counter_man/king recalculated from board state)
     counter_man : int = 0
     counter_king : int = 0
 
     # History (database)
-    # Le variabili History sono caricate dal database (se presente)
+    # History variables are loaded from the database (if present)
     counter_game : int = 0
     counter_score : float = 0.0
     """

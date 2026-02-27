@@ -9,6 +9,7 @@ check_valid_piece = Pieces.check_valid_piece
 
 class PygameBlending:
     """
+    Class for blending during cell and piece state transitions
     """
 
     def __init__(self, callback: Callable[[], ColorType]):
@@ -18,9 +19,9 @@ class PygameBlending:
                 
     def initialize_blending(self):        
         if self.timer != None:
-            _t : float = self.timer / BLENDING_DURATION
-            _t = max(0.0, min(1.0, _t))
-            self.color_init = PygameBlending.interpolate_color(self.color_init, self.get_color_object(), _t)
+            t : float = self.timer / BLENDING_DURATION
+            t = max(0.0, min(1.0, t))
+            self.color_init = PygameBlending.interpolate_color(self.color_init, self.get_color_object(), t)
         else:
             self.color_init = self.get_color_object()
         self.timer = 0
@@ -36,12 +37,12 @@ class PygameBlending:
 
     def update_blending(self)->ColorType:
         self.timer += TIMER_PRESCALER
-        _t : float = self.timer / BLENDING_DURATION
-        _t = max(0.0, min(1.0, _t))
+        t : float = self.timer / BLENDING_DURATION
+        t = max(0.0, min(1.0, t))
         if self.timer >= BLENDING_DURATION:
             self.timer = None
             self.color_init = self.get_color_object()
-        return PygameBlending.interpolate_color(self.color_init, self.get_color_object(), _t)
+        return PygameBlending.interpolate_color(self.color_init, self.get_color_object(), t)
 
     def get_color_blend(self)->ColorType:
         if self.timer != None:
@@ -49,7 +50,7 @@ class PygameBlending:
         else:
             return self.get_color_object()
 
-# Classe per definire lo stato dei pezzi
+# Class to define the state of the pieces
 @enum.unique
 class EnumStatePiece(enum.Enum):
     P_NORMAL = 0
@@ -58,6 +59,7 @@ class EnumStatePiece(enum.Enum):
 
 class PygamePiece(PygameBlending):
     """
+    Class that defines the properties and state of a piece
     """
 
     def __init__(self, id_piece:int):
@@ -66,7 +68,7 @@ class PygamePiece(PygameBlending):
         self.player : EnumPlayersColor = EnumPlayersColor.P_LIGHT if id_piece > 0 else EnumPlayersColor.P_DARK
         self.is_king : bool = True if MAX_MAN < abs(id_piece) <= MAX_KING else False
         self.state = EnumStatePiece.P_NORMAL
-        # N.B.: dopo 'self.state' perche usata in 'self.get_color_area' !
+        # Hint: after 'self.state' because it is used in 'self.get_color_area' !
         super().__init__(self.get_color_area)
 
     def promotion_king(self):
@@ -87,24 +89,24 @@ class PygamePiece(PygameBlending):
             self.state = state
 
     def get_color_border(self)->ColorType:
-        _color = (
+        color = (
             Colors.PIECE_BORDER_LIGHT 
             if self.player == EnumPlayersColor.P_LIGHT 
             else Colors.PIECE_BORDER_DARK
         )
         map_border = { 
-            EnumStatePiece.P_NORMAL : _color,
+            EnumStatePiece.P_NORMAL : color,
             EnumStatePiece.P_SELECTED : Colors.PIECE_BORDER_SELECTED,
-            EnumStatePiece.P_CAPTURED : _color  # Colors.CELL_DARK
+            EnumStatePiece.P_CAPTURED : color  # Colors.CELL_DARK
         }
         return map_border[self.state]
 
     def get_color_area(self)->ColorType:
-        if self.state is EnumStatePiece.P_CAPTURED:
+        if self.state == EnumStatePiece.P_CAPTURED:
             return Colors.CELL_DARK
         return Colors.PIECE_LIGHT if self.player == EnumPlayersColor.P_LIGHT else Colors.PIECE_DARK
     
-# Classe usata per definire lo stato delle celle
+# Class used to define the state of cells
 @enum.unique
 class EnumStateCell(enum.Enum):
     C_NORMAL = 0
@@ -114,6 +116,7 @@ class EnumStateCell(enum.Enum):
 
 class PygameCell(PygameBlending):
     """
+    Class that defines the ownership and state of a cell on the board
     """
 
     def __init__(self, id_dark_cell:int):
@@ -162,5 +165,5 @@ class PygameCell(PygameBlending):
         return map_cell[self.state]
     
     def is_highlighted(self):
-        return self.state is not EnumStateCell.C_NORMAL
+        return self.state != EnumStateCell.C_NORMAL
         

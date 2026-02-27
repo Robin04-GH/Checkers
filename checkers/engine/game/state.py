@@ -24,10 +24,10 @@ class State:
         """
         self.pieces : Pieces = Pieces()
         self.player_turn = EnumPlayersColor.P_LIGHT
-        # number_move serve in restore 'view' o come statistica
+        # number_move is used in restore 'view' or as statistics
         self.number_move : int = 0
         self.parity_move : int = 0
-        # pk_game e database servono per gestione database in 'view' o history attivo
+        # pk_game and database are used for database management in 'view' or active history
         self.pk_game : str = ""
         self.database : str = ""
         self.pdn : str = ""
@@ -194,8 +194,9 @@ class State:
     def set_players(self, pk_players:tuple[str,str]):
         self.data_player_light.engine, self.data_player_light.name = self.split_pk_player(pk_players[0])
         self.data_player_dark.engine , self.data_player_dark.name  = self.split_pk_player(pk_players[1])
-        # Se database unisco nei Player anche i dati storici di "history_database"
-        if len(self.database) > 0:
+        # If database I also merge the historical data from "history_database" 
+        # into the Players
+        if self.database:
             self.data_player_light.load_history_data()
             self.data_player_dark.load_history_data()
         self.data_player_light.reset()
@@ -232,8 +233,8 @@ class State:
         return self.data_players[self.player_turn].engine
 
     def generate_pk_game(self)->str:
-        # Generazione datetime per chiave primaria game (univoca con microsecondi). 
-        # N.B.: solo restituita non assegnata a self.pk_game !
+        # Generate datetime for primary key game (unique with microseconds).
+        # Hint: only returned, not assigned to self.pk_game !        
         return datetime.now().strftime("%Y%m%d%H%M%S%f")
 
     def get_next_turn(self)->EnumPlayersColor:
@@ -250,32 +251,31 @@ class State:
             self.player_turn = EnumPlayersColor.P_LIGHT
     
     def update(self, move:Move)->bool:
-        # La partita è dichiarata patta quando, avendo entrambi i giocatori almeno una dama, 
-        # si verificano 40 mosse per parte (riducibili a 10) senza che venga catturato alcun pezzo e 
-        # senza che nessuna pedina si sia mossa (solo dame).
+        # The game is declared a draw when, with both players having at least one king,
+        # 40 moves have occurred on each side (reducible to 10) without any pieces 
+        # being captured and without any pawns having moved (kings only).        
         if self.get_least_one_king() and len(move.captures) == 0 and self.pieces.is_king(move.origin):
             self.parity_move += 1
             print(f"Parity move = {self.parity_move}")
         else:
             self.parity_move = 0
 
-        # Aggiornamento stato scacchiera
+        # Board status update
         _destination : int = move.destinations[-1]
         self.pieces.update_position(move.origin, _destination)
-        for _id_dark_cell in move.captures:
-            self.set_counter_captured(_id_dark_cell)
-            self.pieces.remove_pieces(_id_dark_cell)
+        for id_dark_cell in move.captures:
+            self.set_counter_captured(id_dark_cell)
+            self.pieces.remove_pieces(id_dark_cell)
 
-        # La promozione a dama di una pedina avviene solo a mossa conclusa.
+        # A man can only be promoted to a king once a move has been completed.
         _is_promoted_king = self.pieces.check_promotion_king(_destination, self.player_turn)
         if _is_promoted_king:
             self.set_counter_promoted()
 
-        self.set_next_turn()
         return _is_promoted_king
     
-    # Test fine partita :
-    # - nessuna mossa possibile o nessun pezzo
+    # Test end of game:
+    # - no possible move or no piece
     # - parity_move >= MAX_PARITY
     def check_game_over(self, number_moves:int, max_parity:int)->bool:
         if number_moves <= 0 or self.parity_move >= max_parity:

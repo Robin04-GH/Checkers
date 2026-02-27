@@ -8,36 +8,40 @@ class EnumChannelProtocols(enum.Enum):
     C_PROTGRAPHINPUT = 1
     C_PROTGRAPHOUTPUT = 2
     
+_PROTOCOL_MAP = { 
+    EnumChannelProtocols.C_PROTGRAPHINPUT: (GraphInputSender, GraphInputReceiver), 
+    EnumChannelProtocols.C_PROTGRAPHOUTPUT: (GraphOutputSender, GraphOutputReceiver), 
+}    
+
 class Channel:
     """
-    """
-
-    def __init__(self, protocol:EnumChannelProtocols):
-        self._shared_data : SharedData = SharedData()
-        match protocol:
-            case EnumChannelProtocols.C_PROTGRAPHINPUT:
-                self.sender : GraphInputSender = GraphInputSender(self._shared_data)   
-                self.receiver : GraphInputReceiver = GraphInputReceiver(self._shared_data)
-            case EnumChannelProtocols.C_PROTGRAPHOUTPUT:
-                self.sender : GraphOutputSender = GraphOutputSender(self._shared_data)   
-                self.receiver : GraphOutputReceiver = GraphOutputReceiver(self._shared_data)
-            case _:
-                raise ValueError(f"Specified name protocol {protocol} not exist !")        
-
-    def register(self, instance:any):
-        self._shared_data.register(instance)
-
-    def unregister(self, instance:any):
-        self._shared_data.unregister(instance)    
-
-# Un gateway contiene gli oggetti comuni necessari per costruire un canale di comunicazione 
-# direzionale tra le classi registrate :
-#  - definizione dei messaggi
-#  - una queue per direzione
-class Gateway():
-    """
+    A communication channel with a sender and receiver sharing the same data.
     """ 
+    
+    def __init__(self, protocol: EnumChannelProtocols):
+        self._shared_data = SharedData()
+        
+        try:
+            sender_cls, receiver_cls = _PROTOCOL_MAP[protocol]
+        except KeyError:
+            raise ValueError(f"Unknown protocol {protocol}")
+        
+        self.sender = sender_cls(self._shared_data)
+        self.receiver = receiver_cls(self._shared_data)
+        
+    def register(self, instance: any):
+        self._shared_data.register(instance)
+        
+    def unregister(self, instance: any):
+        self._shared_data.unregister(instance)
 
-    def __init__(self):        
-        self.graph_input : Channel = Channel(EnumChannelProtocols.C_PROTGRAPHINPUT)
-        self.graph_output : Channel = Channel(EnumChannelProtocols.C_PROTGRAPHOUTPUT)
+class Gateway:
+    """
+    Creates all communication channels defined by the available protocols.
+    """ 
+    
+    def __init__(self):
+        self.channels = { 
+            protocol: Channel(protocol)
+            for protocol in EnumChannelProtocols
+        }        

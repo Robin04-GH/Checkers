@@ -1,6 +1,12 @@
 import configparser
 import json
 from typing import Any, Optional
+from enum import Enum
+
+class EnumExecutionMode(Enum):
+    PLAY = "play"
+    VIEW = "view"
+    DATA = "data"
 
 class ConfigManager:
     """
@@ -52,7 +58,11 @@ class ConfigManager:
 		#   "play" checkers game between player 1 and player 2
 		#   "view" view checkers game from archive
 		#   "data" Unsupervised Learning (UL) data extraction
-        self.execution_mode : str = self.get("Configuration", "mode", default="play")
+        mode_str = self.get("Configuration", "mode", default="play")
+        try:
+            self.execution_mode : EnumExecutionMode = EnumExecutionMode(mode_str)
+        except ValueError:
+            raise ValueError(f"Invalid execution mode '{mode_str}' in configuration")
 
         # "player1_name" : identification player 1
         #   "<name_player> name player for storage data
@@ -78,8 +88,8 @@ class ConfigManager:
 		#   "RL" Reinforcement Learning
         self.player2_engine : str = self.get("Configuration", "player2_engine", default="player")
         
-        # "parity_move" : massimo numero di mosse senza che venga catturato alcun pezzo e 
-        # senza che nessuna pedina si sia mossa (conteggio su entrambi i giocatori)
+        # "parity_move" : Maximum number of moves without capturing any pieces and
+        # without moving any pieces (counted by both players)
         self.parity_move : int = int(self.get("Configuration", "parity_move", default=80).strip())
 
 		# "restore" : restore checkerboards state from archive /restores
@@ -103,3 +113,6 @@ class ConfigManager:
         #   N.B.: se PDN il time determina il numero della partita con stessa data !
         self.pk_game : Optional[str] = self.get("Configuration", 'pk_game', default=None)
         
+        # "seed" : use for randomization with testable determinism
+        seed = self.get("Configuration", "seed", default=None)
+        self.seed : Optional[int] = int(seed) if seed is not None else None

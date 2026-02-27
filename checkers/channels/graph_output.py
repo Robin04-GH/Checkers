@@ -1,10 +1,13 @@
 import enum
-from typing import Protocol, Optional
+from typing import Protocol, Optional, Callable, Dict, Any
 from checkers.channels.shared_data import Message, SharedData
 from checkers.engine.game.move import Move
 
-# Classe usata per definire gli ID dei messaggi in arrivo al modulo grafico
-# N.B.: ogni ID gestisce un metodo scrivere il messaggio nella queue (sender) ed uno leggere (receiver) !
+HandlerType = Callable[["ProtGraphOutput", tuple[Any, ...]], None]
+
+# Class used to define the IDs of messages sent by graphics module.
+# Hint: Each ID manages a method for writing the message to the queue (sender) 
+# and one for reading it (receiver).
 @enum.unique
 class EnumGraphOutput(enum.Enum):
     GO_NONE = 0
@@ -13,12 +16,20 @@ class EnumGraphOutput(enum.Enum):
     GO_DESTINATED_CELL = 3
     GO_TERMINATE_MOVE = 4
 
+DISPATCH_GRAPH_OUTPUT_MAP: Dict[int, HandlerType] = {
+    EnumGraphOutput.GO_NONE.value: lambda inst, data: None,
+    EnumGraphOutput.GO_STRING.value: lambda inst, data: inst.print_string(data[0]),
+    EnumGraphOutput.GO_SELECTED_CELL.value: lambda inst, data: inst.selected_cell(data[0]),
+    EnumGraphOutput.GO_DESTINATED_CELL.value: lambda inst, data: inst.destinated_cell(data[0]),
+    EnumGraphOutput.GO_TERMINATE_MOVE.value: lambda inst, data: inst.terminate_move(data[0]),
+}
+
 # protocol
 class ProtGraphOutput(Protocol):
-    def print_string(string:str)->int: ...
-    def selected_cell(cell:int)->int: ...
-    def destinated_cell(index:int)->int: ...
-    def terminate_move(move:Optional[Move])->int: ...
+    def print_string(self, string:str)->int: ...
+    def selected_cell(self, cell:int)->int: ...
+    def destinated_cell(self, index:int)->int: ...
+    def terminate_move(self, move:Optional[Move])->int: ...
 
 class GraphOutputSender:
     """
@@ -30,18 +41,24 @@ class GraphOutputSender:
     def await_sended(self, await_id:int)->bool:
         return self._shared_data.await_sended(await_id)
     
-    # Metodi del protocollo (sender)
+    def _send(self, msg_id: EnumGraphOutput, *args, awaitable=False):
+        msg = Message(msg_id.value, args)
+        if awaitable:
+            return self._shared_data.send_awaitable(msg)
+        return self._shared_data.send(msg)
+
+    # Protocol methods (sender)
     def print_string(self, string:str)->int:
-        return self._shared_data.send(Message(EnumGraphOutput.GO_STRING.value, (string,)))
+        return self._send(EnumGraphOutput.GO_STRING, string)
 
     def selected_cell(self, cell:int)->int:
-        return self._shared_data.send_awaitable(Message(EnumGraphOutput.GO_SELECTED_CELL.value, (cell,)))
+        return self._send(EnumGraphOutput.GO_SELECTED_CELL, cell)
 
     def destinated_cell(self, index:int)->int:
-        return self._shared_data.send_awaitable(Message(EnumGraphOutput.GO_DESTINATED_CELL.value, (index,)))
+        return self._send(EnumGraphOutput.GO_DESTINATED_CELL, index)
 
     def terminate_move(self, move:Optional[Move])->int:
-        return self._shared_data.send_awaitable(Message(EnumGraphOutput.GO_TERMINATE_MOVE.value, (move,)))
+        return self._send(EnumGraphOutput.GO_TERMINATE_MOVE, move)
 
 class GraphOutputReceiver:
     """
@@ -51,19 +68,9 @@ class GraphOutputReceiver:
         self._shared_data = shared_data
 
     def dispatcher(self, instance:ProtGraphOutput):
-        _msg : Message = self._shared_data.receive(instance)
+        msg : Message = self._shared_data.receive(instance)
 
-        # match metodi del protocollo (receiver)
-        match _msg.id:
-            case EnumGraphOutput.GO_NONE.value:
-                pass
-            case EnumGraphOutput.GO_STRING.value: 
-                instance.print_string(_msg.data[0])
-            case EnumGraphOutput.GO_SELECTED_CELL.value:
-                instance.selected_cell(_msg.data[0])                
-            case EnumGraphOutput.GO_DESTINATED_CELL.value:
-                instance.destinated_cell(_msg.data[0])                
-            case EnumGraphOutput.GO_TERMINATE_MOVE.value:
-                instance.terminate_move(_msg.data[0])                
-            case _:
-                raise KeyError(f"GraphOutput recived {self.msg.id} not contained in messages list !")
+        handler = DISPATCH_GRAPH_OUTPUT_MAP.get(msg.id)
+        if handler is None:
+            raise KeyError(f"Unknown message id {msg.id}")
+        handler(instance, msg.data)

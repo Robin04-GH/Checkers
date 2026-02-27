@@ -7,7 +7,7 @@ from checkers.graph.pygame.colors import Colors
 from checkers.engine.game.cells import Coordinates2D, Cells
 from checkers.graph.pygame.pygame_elements import PygameCell, PygamePiece
 
-# Classe per definire lo stato dei pezzi
+# Class to define the graphic layers that make up the final image
 @unique
 class EnumLayerMask(IntFlag):
     L_MASK_BOARD = auto()
@@ -21,6 +21,7 @@ class EnumLayerMask(IntFlag):
 
 class PygameLayers:
     """
+    Class for managing layers and drawing methods
     """
 
     def __init__(self):
@@ -69,17 +70,18 @@ class PygameLayers:
             self._dirty_rects.clear()
         else:       
             pygame.display.flip()   
-            # In assenza di dirty comunque refresh temporizzato,
-            # update() non garantisce che l’intera finestra sia sincronizzata con il backbuffer.
-            self._clock.tick(6)            
+            # In the absence of dirty, however, timed refresh,
+            # update() does not guarantee that the entire window is synchronized 
+            # with the backbuffer.
+            self._clock.tick(60)            
 
     # Draw static checkerboard
     def draw_checkerboard(self):
         for row in range(DIM_CKECKERBOARD):
             for col in range(DIM_CKECKERBOARD):
-                _color : ColorType = Colors.CELL_LIGHT if (row + col) % 2 else Colors.CELL_DARK
-                _rect : RectType = (col * CELL_WIDTH, row * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
-                self._raw_draw_cell(self._board_layer, _color, _rect)
+                color : ColorType = Colors.CELL_LIGHT if (row + col) % 2 else Colors.CELL_DARK
+                rect : RectType = (col * CELL_WIDTH, row * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
+                self._raw_draw_cell(self._board_layer, color, rect)
         self.validate_rect(self._board_layer.get_rect(), EnumLayerMask.L_MASK_BOARD)
 
     def draw_cell(self, cell:PygameCell):
@@ -112,14 +114,14 @@ class PygameLayers:
         self.piece_pos = None
 
     def get_rect_move(self, pixel:Coordinates2D)->RectType:
-        _rect : RectType = (
+        rect : RectType = (
             pixel.x - CELL_WIDTH // 2, 
             pixel.y - CELL_HEIGHT // 2, 
             CELL_WIDTH, 
             CELL_HEIGHT
         )
-        # print(f"Rect : {_rect}")
-        return _rect
+        # print(f"Rect : {rect}")
+        return rect
 
     def clear_piece_move(self):
         if self.piece_pos != None:
@@ -128,9 +130,9 @@ class PygameLayers:
 
     def draw_piece_move(self, pixel:Coordinates2D):             
         if pixel != self.piece_pos:  
-            # Cancellazione vecchia posizione pezzo
+            # Deleting old piece position
             self.clear_piece_move()
-            # Disegno nuova posizione pezzo
+            # Drawing new piece position
             self._raw_draw_piece(
                     self._drag_layer, 
                     self.piece_moving.get_color_area(), 
@@ -142,14 +144,14 @@ class PygameLayers:
             self.validate_rect(self.get_rect_move(pixel), EnumLayerMask.L_MASK_MOVING)
 
     def get_cell_from_pos(self, pixel:Coordinates2D)->int:
-        _col = pixel.x // CELL_WIDTH 
-        _row = pixel.y // CELL_HEIGHT
+        col = pixel.x // CELL_WIDTH 
+        row = pixel.y // CELL_HEIGHT
         
-        if not (0 <= _row < DIM_CKECKERBOARD and 0 <= _col < DIM_CKECKERBOARD):
+        if not (0 <= row < DIM_CKECKERBOARD and 0 <= col < DIM_CKECKERBOARD):
             return -1
         
-        # N.B.: ritorna solo l'id delle celle dark, se la cella è light ritorna -1 !
-        return Cells.coord2index(Coordinates2D(_col, _row))
+        # Hing: it only returns the id of dark cells, if the cell is light it returns -1!
+        return Cells.coord2index(Coordinates2D(col, row))
 
     # Raw draw cell
     def _raw_draw_cell(self, layer:pygame.Surface, color:ColorType, rect:RectType):

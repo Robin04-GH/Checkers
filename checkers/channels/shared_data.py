@@ -1,5 +1,6 @@
 import enum
 import queue
+import weakref
 import threading
 from dataclasses import dataclass
 
@@ -24,26 +25,24 @@ class SharedData:
     """
 
     def __init__(self):
-        self.queue = queue.Queue()    
+        self.queue = queue.Queue(MAX_QUEUE_SIZE)    
         self.lock = threading.Lock()
-        self.registered_receivers : set[any] = set()
+        # Hint: if a receiver is destroyed but not deregistered, using 'weakref' avoids memory leaks !
+        self.registered_receivers = weakref.WeakSet()
         self.counters : dict[EnumQueue, int] = { EnumQueue.Q_PUSH : 0, EnumQueue.Q_POP : 0 }
         self.awaits : set[int] = set()
         self.latcher_receivers : set[any] = set()
         self.last_message : Message = Message()
-        self.enable_get : bool = False
 
-    # N.B.: metodi ad uso interno senza lock perchè utilizzato dai chiamanti
+    # Hint: methods for internal use of the class do not use 'lock' because it is already used 
+    # by the other calling methods !
     def _has_registered_receivers(self)->bool:
         return len(self.registered_receivers) != 0
         
     def _counters_inc(self, key:EnumQueue)->int:
-        self.counters[key] += 1 
-        if self.counters[key] > MAX_QUEUE_SIZE:
-            self.counters[key] -= MAX_QUEUE_SIZE
-        # self.counters[key] = +1 if self.counters[key] < MAX_QUEUE_SIZE else 1
+        self.counters[key] = (self.counters[key] % MAX_QUEUE_SIZE) + 1
 
-        # se Q_POP aggiorna lista awaits
+        # if Q_POP updates awaits list
         if key == EnumQueue.Q_POP:
             _n = self.counters[key] 
             if _n in self.awaits:
@@ -56,21 +55,9 @@ class SharedData:
             try:
                 self.queue.put(msg, False)
                 return self._counters_inc(EnumQueue.Q_PUSH)
-            except:
+            except queue.Full:
                 print(f"Full exception queue!")
         return 0
-    
-    def _receive_buffer(self, instance:any)->Message:
-        if self.last_message != None and instance in self.latcher_receivers:
-            self.enable_get = False
-            self.latcher_receivers.remove(instance)
-
-            if len(self.latcher_receivers) == 0:
-                self._counters_inc(EnumQueue.Q_POP)
-
-            return self.last_message
-        else:
-            return Message()
 
     def register(self, instance:any):
         with self.lock:
@@ -100,19 +87,31 @@ class SharedData:
                 return True
             else:
                 return False
-            
-    def receive(self, instance:any)->Message:
-        with self.lock:
-            if instance in self.registered_receivers:
-                if len(self.latcher_receivers) == 0:
-                    self.latcher_receivers = self.registered_receivers.copy()
-                    self.enable_get = True
 
-                if self.enable_get:
-                    try:
-                        self.last_message = self.queue.get_nowait()
-                    except:
-                        return Message()
-                    
-                return self._receive_buffer(instance)
-        return Message()
+    def receive(self, instance: any) -> Message:
+        with self.lock:
+            if instance not in self.registered_receivers:
+                return Message()
+
+            # In the absence of distribution, read new message
+            if not self.latcher_receivers:
+                try:
+                    msg = self.queue.get_nowait()
+                except queue.Empty:
+                    return Message()
+
+                self.last_message = msg
+                self.latcher_receivers = set(self.registered_receivers)
+
+            # 'last_message' distribution among all registered receivers
+            if instance not in self.latcher_receivers:
+                return Message()
+
+            self.latcher_receivers.remove(instance)
+
+            # Only on the last receiver increment counters (Q_POP)
+            if not self.latcher_receivers:
+                self._counters_inc(EnumQueue.Q_POP)
+
+            return self.last_message
+        
