@@ -69,7 +69,7 @@ class ConfigManager:
         self.player1_name : str = self.get("Configuration", "player1_name", default="name1")
 
 		# "player1_engine" : type of decision engine for player 1
-		#   N.B.: valid only in 'play' mode !
+		#   Hint: valid only in 'play' mode !
 		#   "player" mouse or keyboard moves
 		#   "classic" MiniMax + Alpha-Beta Pruning
 		#   "SL" Supervised Learning
@@ -81,7 +81,7 @@ class ConfigManager:
         self.player2_name : str = self.get("Configuration", "player2_name", default="name2")
 
 		# "player2_engine" : type of decision engine for player 2
-		#   N.B.: valid only in 'play' mode !
+		#   Hint: valid only in 'play' mode !
 		#   "player" mouse or keyboard moves
 		#   "classic" MiniMax + Alpha-Beta Pruning
 		#   "SL" Supervised Learning
@@ -89,29 +89,35 @@ class ConfigManager:
         self.player2_engine : str = self.get("Configuration", "player2_engine", default="player")
         
         # "parity_move" : Maximum number of moves without capturing any pieces and
-        # without moving any pieces (counted by both players)
+        # without moving any mans (counted by both players)
         self.parity_move : int = int(self.get("Configuration", "parity_move", default=80).strip())
 
 		# "restore" : restore checkerboards state from archive /restores
-		#   N.B.: delete option if normal game start !
+		#   Hint: delete option if normal game start !
 		#   "<name_checkerboard> checkerboard state name
         self.restore_name : Optional[str] = self.get("Configuration", 'restore', default=None)
         
 		# "history_database" : activation of historical game storage on database
-		# 	N.B.: if omitted, storing does not occur !
+		# 	Hint: if omitted, storing does not occur !
 		#   "<name_database> database name for game to storage
         self.history_db_name : Optional[str] = self.get("Configuration", 'history_database', default=None)
         
-        # "import_pdn" : PDN name from which to view the game
-        #   N.B.: valid only in 'view' mode !
-        #   "<name_pdn> PDN name for import/view
+        # "pk_game" : game identifier to view
+        #   Hint: valid only in 'view' mode !
+        #   "<pk_game> game identifier in the chosen database (primary key=datetime)
+        self.pk_game : Optional[str] = self.get("Configuration", 'pk_game', default=None)
+
+        # "import_pdn" : PDN filename from which to view the game
+        #   Hint: valid only in 'view' mode !
+        #   "<name_pdn> PDN filename for import/view
         self.import_pdn_name : Optional[str] = self.get("Configuration", "import_pdn", default=None)
         
-        # "pk_game" : game identifier to view
-        #   N.B.: valid only in 'view' mode !
-        #   "<pk_game> game identifier in the chosen database (primary key=datetime)
-        #   N.B.: se PDN il time determina il numero della partita con stessa data !
-        self.pk_game : Optional[str] = self.get("Configuration", 'pk_game', default=None)
+        # "pdn_game" : game identifier in pdn (first game unless specified)
+        #   Hint: Valid only with' import_pdn' !
+        #   String containing order number of the match where the 'view' from PDN begins
+        self.pdn_game : Optional[str] = self.get("Configuration", "pdn_game", default=None)
+        if not self.pdn_game or not self.pdn_game.isdigit():
+            self.pdn_game = "1"
         
         # "seed" : use for randomization with testable determinism
         seed = self.get("Configuration", "seed", default=None)

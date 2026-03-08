@@ -114,6 +114,8 @@ class PygameEventManager:
     def on_key_up(self, event:Event):
         if event.key == pygame.K_x and self._lalt_pressed:
             self.on_quit(event)
+        elif event.key == pygame.K_s and self._lalt_pressed:
+            self.save_and_quit(event)
         elif event.key == pygame.K_SPACE:
             self.debug("Released SPACE")
         elif event.key == pygame.K_TAB:
@@ -171,6 +173,10 @@ class PygameEventManager:
         index = self.state.moving_timer(elapsed)
         if index != None:
             self.sender_move(index)
+
+    def save_and_quit(self, event:Event):
+        self.sender.print_string(f"SAVE_QUIT")
+        self.running = False
 
     # with global argoments : debug("message {}, {}", var1, var2)
     # with f-string style : debug(f"message {var1}, {var2})

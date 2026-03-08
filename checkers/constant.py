@@ -25,3 +25,10 @@ CELL_HEIGHT = SCREEN_HEIGHT // DIM_CKECKERBOARD
 # timer, blending (msec)
 TIMER_PRESCALER = 20
 BLENDING_DURATION = 250
+
+# path
+PATH_RESTORES = "restores/"
+PATH_PDN = "pdn/"
+
+# maximum number of characters per line
+MAX_LINE_CHAR = 99999

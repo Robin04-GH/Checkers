@@ -1,5 +1,6 @@
 import os
 import json
+from checkers.constant import PATH_RESTORES
 from datetime import datetime
 from checkers.constant import DIM_CKECKERBOARD, MAX_DARK_CELLS, MAX_MAN
 from checkers.engine.game.cells import Coordinates2D
@@ -25,23 +26,24 @@ class State:
         self.pieces : Pieces = Pieces()
         self.player_turn = EnumPlayersColor.P_LIGHT
         # number_move is used in restore 'view' or as statistics
-        self.number_move : int = 0
+        self.number_move : int = 1
         self.parity_move : int = 0
-        # pk_game and database are used for database management in 'view' or active history
-        self.pk_game : str = ""
-        self.database : str = ""
-        self.pdn : str = ""
         self.data_player_light : PlayerStats = PlayerStats()
         self.data_player_dark  : PlayerStats = PlayerStats()
         self.data_players : dict[EnumPlayersColor, PlayerStats] = { 
             EnumPlayersColor.P_LIGHT : self.data_player_light, 
             EnumPlayersColor.P_DARK  : self.data_player_dark 
         }    
+        # pk_game and database are used for database management in 'view' or active history
+        self.pk_game : str = ""
+        self.database : str = ""
+        self.pdn_game : str = ""
+        self.pdn : str = ""
         self.exit : bool = False
         self.game_over : bool = False
 
     # Initial position of pieces on the checkerboard
-    def reset(self, pk_game:str, pk_players:tuple[str,str]):
+    def reset(self, pk_players:tuple[str,str]):
         self.pieces.clear()
 
         for light_man_index in range(MAX_MAN):
@@ -51,21 +53,21 @@ class State:
             self.pieces.add_pieces(dark_man_index, -dark_man_index - 1)
 
         self.player_turn = EnumPlayersColor.P_LIGHT
-        self.number_move = 0
+        self.number_move = 1
         self.parity_move = 0
         self.game_over = False
 
-        self.pk_game = pk_game
         self.set_players(pk_players)
 
     # restoration of positioning pieces on the ckeckerboard from a previously saved state
     def restore(self, filename: str):
-        if not os.path.exists(filename):
-            raise FileNotFoundError(f"File {filename} not found !")
+        path_file = PATH_RESTORES + filename
+        if not os.path.exists(path_file):
+            raise FileNotFoundError(f"File {path_file} not found !")
         
         self.pieces.clear()
 
-        with open(filename,"r") as file_restore:
+        with open(path_file,"r") as file_restore:
             state_dict = json.load(file_restore)
 
             # Verify key 'checkerboard'
@@ -98,24 +100,6 @@ class State:
                 raise ValueError(f"Missing 'parity_move' key !")
             self.parity_move = state_dict["parity_move"]
 
-            # Verify key 'pk_game'
-            if "pk_game" not in state_dict:
-                raise ValueError(f"Missing 'pk_game' key !")
-            # Stringa non vuota solo in 'play' con history attiva, oppure in 'view'
-            self.pk_game = state_dict["pk_game"]
-
-            # Verify key 'database'
-            if "database" not in state_dict:
-                raise ValueError(f"Missing 'database' key !")
-            # Database history o view
-            self.database = state_dict["database"]
-
-            # Verify key 'pdn'
-            if "pdn" not in state_dict:
-                raise ValueError(f"Missing 'pdn' key !")
-            # Import PDN o view
-            self.pdn = state_dict["pdn"]
-
             # Verify key 'player_light'
             if "player_light" not in state_dict:
                 raise ValueError(f"Missing 'player_light' key !")
@@ -126,6 +110,30 @@ class State:
                 raise ValueError(f"Missing 'player_dark' key !")
             _pk_dark : str = state_dict["player_dark"]
 
+            # Verify key 'database'
+            if "database" not in state_dict:
+                raise ValueError(f"Missing 'database' key !")
+            # Database history o view
+            self.database = state_dict["database"]
+
+            # Verify key 'pk_game'
+            if "pk_game" not in state_dict:
+                raise ValueError(f"Missing 'pk_game' key !")
+            # Non empty string only in 'play' with history active, or in 'view'
+            self.pk_game = state_dict["pk_game"]
+
+            # Verify key 'pdn'
+            if "pdn" not in state_dict:
+                raise ValueError(f"Missing 'pdn' key !")
+            # Import PDN o view
+            self.pdn = state_dict["pdn"]
+
+            # Verify key 'pdn_game'
+            if "pdn_game" not in state_dict:
+                raise ValueError(f"Missing 'pdn_game' key !")
+            # Non empty string only in 'view' with 'import_pdn_name'
+            self.pdn_game = state_dict["pdn_game"]
+
             self.set_players((_pk_light, _pk_dark))
             self.data_player_light.set_counter_man_king(*self.pieces.counter_man_king(EnumPlayersColor.P_LIGHT))
             self.data_player_dark.set_counter_man_king(*self.pieces.counter_man_king(EnumPlayersColor.P_DARK))
@@ -134,9 +142,10 @@ class State:
         id_dark_cell = Cells.coord2index(Coordinates2D(col_index, row_index))
         self.pieces.add_pieces(id_dark_cell, value)
 
-    def save(self, filename: str):
-        if os.path.exists(filename):
-            print(f"Warning: File {filename} will be overwritten !")
+    def save(self):
+        path_file : str = PATH_RESTORES + "state_" + self.generate_datetime()
+        if os.path.exists(path_file):
+            print(f"Warning: File {path_file} will be overwritten !")
 
         state_dict = {}
 
@@ -152,26 +161,29 @@ class State:
         # Save counter of parity move
         state_dict["parity_move"] = self.parity_move
 
-        # Save primary key of game
-        state_dict["pk_game"] = self.pk_game
-
-        # Save database "history_database" with 'play/view'
-        state_dict["database"] = self.database
-
-        # Save pdn "import_pdn_name" with 'view'
-        state_dict["pdn"] = self.pdn
-
         # Save players with color
         state_dict["player_light"] = self.build_pk_player(self.data_player_light.engine, self.data_player_light.name)
         state_dict["player_dark"]  = self.build_pk_player(self.data_player_dark.engine , self.data_player_dark.name)
 
+        # Save database "history_database" with 'play/view'
+        state_dict["database"] = self.database
+
+        # Save primary key of game
+        state_dict["pk_game"] = self.pk_game
+
+        # Save pdn "import_pdn_name" with 'view'
+        state_dict["pdn"] = self.pdn
+
+        # Save counter pdn game
+        state_dict["pdn_game"] = self.pdn_game
+
         # Writes to JSON files with error handling
         try:
-            with open(filename, "w") as file_restore:
+            with open(path_file, "w") as file_restore:
                 json.dump(state_dict, file_restore, indent=4)
 
         except IOError as e:
-            print(f"Error writing to file {filename}: {e}")
+            print(f"Error writing to file {path_file}: {e}")
         except ValueError as e:
             print(f"Error serializing JSON: {e}")
 
@@ -189,7 +201,13 @@ class State:
         engine, player = pk_player.split(":")
         # without space
         # engine, player = [part.strip() for part in pk_player.split(":")]
-        return (engine, player)
+        return (engine.strip(), player.strip())
+
+    def add_engine_players(self, engine:str, players:tuple[str,str])->tuple[str,str]:
+        return (
+            self.build_pk_player(engine, players[0]),
+            self.build_pk_player(engine, players[1])
+        )
 
     def set_players(self, pk_players:tuple[str,str]):
         self.data_player_light.engine, self.data_player_light.name = self.split_pk_player(pk_players[0])
@@ -201,6 +219,13 @@ class State:
             self.data_player_dark.load_history_data()
         self.data_player_light.reset()
         self.data_player_dark.reset()
+
+    def get_player(self, player:EnumPlayersColor)->str:
+        return self.build_pk_player(self.data_players[player].engine, self.data_players[player].name)
+    
+    def print_playes(self):
+        print(f"Light= {self.get_player(EnumPlayersColor.P_LIGHT)}")
+        print(f"Dark = {self.get_player(EnumPlayersColor.P_DARK )}")
 
     def set_counter_captured(self, id_dark_cell:int):
         _next_turn : EnumPlayersColor = self.get_next_turn()
@@ -232,7 +257,7 @@ class State:
     def get_engine(self)->str:
         return self.data_players[self.player_turn].engine
 
-    def generate_pk_game(self)->str:
+    def generate_datetime(self)->str:
         # Generate datetime for primary key game (unique with microseconds).
         # Hint: only returned, not assigned to self.pk_game !        
         return datetime.now().strftime("%Y%m%d%H%M%S%f")
@@ -249,11 +274,12 @@ class State:
             self.player_turn = EnumPlayersColor.P_DARK
         else:
             self.player_turn = EnumPlayersColor.P_LIGHT
+            self.number_move += 1
     
     def update(self, move:Move)->bool:
         # The game is declared a draw when, with both players having at least one king,
         # 40 moves have occurred on each side (reducible to 10) without any pieces 
-        # being captured and without any pawns having moved (kings only).        
+        # being captured and without any mans having moved (kings only).        
         if self.get_least_one_king() and len(move.captures) == 0 and self.pieces.is_king(move.origin):
             self.parity_move += 1
             print(f"Parity move = {self.parity_move}")

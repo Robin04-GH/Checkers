@@ -23,6 +23,15 @@
             "console": "integratedTerminal"            
         },
         {
+            "name": "Python: tokenizer_parser_pdn",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/demo/tokenizer_parser_pdn.py",
+            "args": [""],
+            "python": "${workspaceFolder}/env/bin/python",
+            "console": "integratedTerminal"            
+        },
+        {
             "name": "Python: checkers",
             "type": "debugpy",
             "request": "launch",

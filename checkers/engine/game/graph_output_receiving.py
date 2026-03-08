@@ -16,6 +16,9 @@ class GraphOutputReceiving:
         match string:
             case "QUIT":
                 self.state.exit = True            
+            case "SAVE_QUIT":
+                self.state.save()
+                self.state.exit = True            
             case _:
                 pass
         return 0

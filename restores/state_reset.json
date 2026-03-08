@@ -12,9 +12,10 @@
     "player_turn": 0,
     "number_move": 1,
     "parity_move": 0,
-    "pk_game": 202602021654123456,
-    "database": "",
-    "pdn": "",
     "player_light": "classic: name1 surname1",
-    "player_dark": "classic: name2 surname2"
+    "player_dark": "classic: name2 surname2",
+    "database": "",
+    "pk_game": "202602021654123456",
+    "pdn": "",
+    "pdn_game": "0"
 }

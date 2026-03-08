@@ -16,5 +16,28 @@ class HistoryInference(InferenceInterface):
             )
 
     def run(self, moves:set[Move])->Optional[Move]:
-        # self.data.get_move() ...
-        pass
+        history_move : tuple[int, ...] | None = self.data.get_move()
+
+        if history_move is None or len(history_move) < 2:
+            raise ValueError(f"HistoryInference : move not present !")
+        
+        list_moves : list[Move] = []
+        history_destinations = history_move[1:]
+        for move in moves:
+            if move.origin == history_move[0]:
+                if move.destinations == history_destinations:
+                    # presenti tutte le celle
+                    list_moves.clear()
+                    list_moves.append(move)
+                    break
+                elif move.destinations[-1] == history_destinations[-1]:
+                    # presente la sola cella destinazione finale
+                    list_moves.append(move)
+
+        len_moves : int = len(list_moves)
+        if len_moves < 1:
+            raise ValueError(f"HistoryInference : mosse non corrispondenti a quelle possibili !")
+        
+        if len_moves > 1:
+            print(f"Storico ambiguo, possibili piu mosse : scelta la prima !")
+        return list_moves[0]
