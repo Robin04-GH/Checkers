@@ -10,6 +10,7 @@
 # "mode" : type of execution mode
 #   "play" checkers game between player 1 and player 2
 #   "view" view checkers game from archive
+#   "scan" like view mode but without graphics refresh
 #   "data" Unsupervised Learning (UL) data extraction
 
 # "player1_name" : identification player 1

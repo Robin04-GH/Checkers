@@ -1,6 +1,7 @@
 from typing import Optional
 from abc import ABC, abstractmethod
 from checkers.engine.game.pieces import EnumPlayersColor
+from checkers.engine.game.state import EnumResult
 
 class DataInterface(ABC):
     """
@@ -27,7 +28,7 @@ class DataInterface(ABC):
         pass
 
     @abstractmethod
-    def game_data(self, id_game:str):
+    def game_data(self, id_game:str)->bool:
         """
         """        
         pass
@@ -64,3 +65,10 @@ class DataInterface(ABC):
         """
         """        
         pass
+
+    @abstractmethod
+    def get_result(self)->EnumResult:
+        """
+        """        
+        pass
+

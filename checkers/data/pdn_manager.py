@@ -1,9 +1,10 @@
 import re
 import enum
 from typing import Optional
-from checkers.constant import PATH_PDN, MAX_LINE_CHAR
+from checkers.constant import PATH_PDN
 from checkers.data.data_interface import DataInterface
 from checkers.engine.game.pieces import EnumPlayersColor
+from checkers.engine.game.state import EnumResult
 from collections import defaultdict
 #from dataclasses import dataclass, field
 
@@ -50,8 +51,11 @@ class PdnLexer:
         self._length = len(self._moves)
 
     def get_result(self)->str:
+        # '1-0', '2-0', '0-1', '0-2', '1/2-1/2', '1-1' (specified result)
+        # '*' (terminator)
+        # '' (unspecified result)
         return self._result
-
+    
     def peek(self)->str | None:
         pos = self._pos
         if pos < self._length:
@@ -70,22 +74,35 @@ class PdnLexer:
             ch = self.peek()
 
     def read_result(self, first_char:str):
-        # handles '1-0', '0-1', '1/2-1/2'
+        # Specified result '1-0', '2-0', '0-1', '0-2', '1/2-1/2', '1-1'
+        possible_results : list[str] = ["1-0", "2-0", "0-1", "0-2", "1/2-1/2", "1-1"] 
+
         buffer = [first_char]
         ch : str = self.peek()
         while ch and ch in "-/012":
             buffer.append(self.advance())
             ch = self.peek()
-        return ''.join(buffer)
+
+        result = ''.join(buffer)
+        return (
+            result 
+            if result in possible_results
+            else ""
+        )            
     
     def seek_number(self)->bool:
         self.skip_whitespace()
 
         ch = self.peek()
-        if ch is None or not ch.isdigit():
+        if ch is None:
             return False
         
-        return True
+        if not ch.isdigit():
+            if ch == '*':
+                self._result = ch
+            return False
+        else:
+            return True
 
     def read_number(self)->str | None:
         start = self._pos
@@ -96,17 +113,30 @@ class PdnLexer:
         return self._moves[start:self._pos]
 
     def read_move(self)->tuple[int, ...] | None:
-        if not self.seek_number():
-            return None
+        while True:
+            if not self.seek_number():
+                return None
 
-        number : str | None = self.read_number()
-        cells = [int(number)]
+            number : str | None = self.read_number()
 
-        # Hint: the move cells always have 2 digits, while the turn and the result 
-        # do not necessarily have to. If only one digit 0/1 could be the result !
-        if number in ("1", "0"):
+            # skip turn
+            ch : str = self.peek()
+            if ch == '.':
+                self.advance()
+            else:
+                break
+
+        # Hint: the engine  counts cells in base-0, not base-1 like pdn !
+        cells = [int(number)-1]
+
+        # if 'number' is 0 or 1 or 2 it could be the result
+        if number in ("0", "1", "2"):
+            pos = self._pos
             self._result = self.read_result(number)
-            return None
+            if self.get_result():
+                return None
+            else:
+                self._pos = pos
 
         while True:
             ch = self.peek()
@@ -116,35 +146,25 @@ class PdnLexer:
             sep = self.advance()
             number = self.read_number()
             if not number:
-                raise ValueError("Mossa malformata")
+                raise ValueError("Malformed move !")
 
-            cells.append(int(number))
+            cells.append(int(number)-1)
         
         return tuple(cells)
-
-    def next_turn(self):
-        if self.seek_number():
-            number = self.read_number()
-            ch : str = self.peek()
-            if ch == '.':
-                # next present turn
-                self.advance()
-                return
-            elif number in ("1", "0") and ch in ('-', '/'):
-                self._result = self.read_result(number)            
-                return
-
-        raise ValueError(f"Prossimo turno non trovato con assenza risultato !")
-
+        
     # Place the cursor on 'number_move' to later read the 'player_turn' move
     def seek_move(self, number_move:int, player_turn:EnumPlayersColor)->bool:
         str_number_move = str(number_move)
         index = self._moves.find(str_number_move + '.')
-        # turn not found
-        if index < 0:
-            return False
-        
-        self._pos = index + len(str_number_move) + 1
+        if index >= 0:        
+            self._pos = index + len(str_number_move) + 1
+        else:
+            # turn not found
+            jump_move = (number_move - 1) * 2
+            while jump_move > 0:
+                if not self.read_move():
+                    return False
+                jump_move -= 1
 
         if player_turn == EnumPlayersColor.P_LIGHT:
             return True
@@ -195,7 +215,8 @@ class PdnManager(DataInterface):
         # Check presence and opening of PDN files
         self._pdn_name = filename
         try:
-            self._file = open(PATH_PDN + self._pdn_name, 'r', encoding='utf-8')
+            # self._file = open(PATH_PDN + self._pdn_name, 'r', encoding='utf-8')
+            self._file = open(PATH_PDN + self._pdn_name, 'r', encoding='iso-8859-1')
             return True
         except:            
             self.close_data()
@@ -208,15 +229,16 @@ class PdnManager(DataInterface):
     def is_open(self)->bool:
         return not self._file.closed
         
-    def game_data(self, id_game:str):
+    def game_data(self, id_game:str)->bool:
         """
         Positioning file cursor at the requested game_id.
         """
 
         self._pdn_game = max(1, int(id_game) if id_game.isdigit() else 1)
+        return self._search_game(self._pdn_game)
 
-        if not self._search_game(self._pdn_game):
-            raise ValueError(f"Game {self._pdn_game} not present in file {self._pdn_name} !")
+        # if not self._search_game(self._pdn_game):
+        #     raise ValueError(f"Game {self._pdn_game} not present in file {self._pdn_name} !")
         
         # Test
         # self.set_turn(27, EnumPlayersColor.P_LIGHT)
@@ -245,22 +267,42 @@ class PdnManager(DataInterface):
         else:
             self._player_turn = EnumPlayersColor.P_LIGHT
             self._number_move += 1
-            self.lexer.next_turn()
 
     def get_move(self)->Optional[tuple[int, ...]]:
         move = self.lexer.read_move()
 
         if move is None:
-            if self._result != self.lexer.get_result():
+            result = self.get_result()
+            lexer_result = self.lexer.get_result()
+            if result == EnumResult.R_NONE and lexer_result != '*':
                 raise ValueError(f"Move not present !")
             # else:
-            #     print(f"Result = {self._result}")
+            #    print(f"Result = {result}")
         else:
             # print(f"Move {self._number_move} : {self._player_turn} = {move}")
             self.next_turn()        
 
         return move
     
+    def get_result(self)->EnumResult:
+        result : str = self.lexer.get_result()
+        if result == '' or result == '*':
+            result = self._result
+
+        enum_result : EnumResult = EnumResult.R_NONE
+        match result:
+            case '1-0' | '2-0':
+                enum_result = EnumResult.R_LIGHT
+            case '0-1' | '0-2':
+                enum_result = EnumResult.R_DARK
+            case '1/2-1/2' | '1-1':
+                enum_result = EnumResult.R_PARITY
+            case '*':
+                enum_result = EnumResult.R_STAR
+            case _:                
+                enum_result = EnumResult.R_NONE                
+        return enum_result
+
     def _comment_exclusion(self) -> str:
         """
         Stack-based linear parser for comment removal
@@ -369,6 +411,7 @@ class PdnManager(DataInterface):
 
                     # If EOF header missing searched
                     if not self._raw_line:
+                        self.lexer.set_length()
                         return (
                             True 
                             if self._counter_game == self._pdn_game and self._row_type == EnumRowType.R_MOVE
@@ -407,5 +450,5 @@ class PdnManager(DataInterface):
                             self.lexer.set_moves(self._buf_line)
 
         self.lexer.set_length()
-        return True            
+        return True
     

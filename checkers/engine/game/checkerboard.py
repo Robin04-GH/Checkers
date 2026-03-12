@@ -72,7 +72,9 @@ class Checkerboard():
 
     def run_match_loop(self, resources:Resources):
         while not self.state.exit:          
-            resources.match()
+            if not resources.match():
+                self.state.exit = False
+                break
             resources.players()
             resources.reset_inference_cache()
             
@@ -96,12 +98,12 @@ class Checkerboard():
 
         with MovesPlayer(self.state) as moves_player:     
             all_moves : set[Move] = moves_player.get_all_moves()
+            move : Optional[Move] = self._compute_move(all_moves, resources)
 
             # end-of-game test        
             if self._is_game_over(all_moves):          
                 return
             
-            move : Optional[Move] = self._compute_move(all_moves, resources)
             self._execute_move(moves_player, move)
             # saving data to database
             self._persist_turn(move)
@@ -113,15 +115,26 @@ class Checkerboard():
 
     def _compute_move(self, all_moves:set[Move], resources:Resources)->Optional[Move]:
         inference = resources.get_inference_source()
-        return inference.run(all_moves) if inference else None
+        # return inference.run(all_moves) if inference else None
+        if not inference:
+            return None
+        move = inference.run(all_moves)
+        if move is None:
+            self.state.force_result(inference.get_result())
+        return move
 
     def _execute_move(self, moves_player:MovesPlayer, move:Optional[Move]):
-        # sequence move (scheduler) and graphics refresh
-        gen = self.move_sequence.run(moves_player, move)
-        for step in gen:
-            if self.state.exit:
-                break
+        if self.config.graphics_disabled:
+            print(f"{self.state.number_move} : move {self.state.player_turn} = {move}")
+            self.state.update(move)
             self.graph_output_channel.receiver.dispatcher(self.receiving)
+        else:
+            # sequence move (scheduler) and graphics refresh
+            gen = self.move_sequence.run(moves_player, move)
+            for step in gen:
+                if self.state.exit:
+                    break
+                self.graph_output_channel.receiver.dispatcher(self.receiving)
 
     def _persist_turn(self, move:Move):
         # TODO save to .db

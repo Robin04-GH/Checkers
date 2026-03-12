@@ -1,5 +1,8 @@
 import os
+import enum
 import json
+from checkers.constant import MAX_MAN, MAX_KING, MAX_DARK_CELLS
+
 from checkers.constant import PATH_RESTORES
 from datetime import datetime
 from checkers.constant import DIM_CKECKERBOARD, MAX_DARK_CELLS, MAX_MAN
@@ -7,6 +10,15 @@ from checkers.engine.game.cells import Coordinates2D
 from checkers.engine.game.pieces import Cells, Pieces, EnumPlayersColor
 from checkers.engine.game.player_stats import PlayerStats
 from checkers.engine.game.move import Move
+
+# Class used to define the outcome of the match.
+@enum.unique
+class EnumResult(enum.Enum):
+    R_NONE = 0
+    R_LIGHT = 1
+    R_DARK = 2
+    R_PARITY = 3
+    R_STAR = 4
 
 class State:
     """
@@ -41,6 +53,7 @@ class State:
         self.pdn : str = ""
         self.exit : bool = False
         self.game_over : bool = False
+        self.result : EnumResult = EnumResult.R_NONE
 
     # Initial position of pieces on the checkerboard
     def reset(self, pk_players:tuple[str,str]):
@@ -56,6 +69,7 @@ class State:
         self.number_move = 1
         self.parity_move = 0
         self.game_over = False
+        self.result = EnumResult.R_NONE
 
         self.set_players(pk_players)
 
@@ -135,8 +149,6 @@ class State:
             self.pdn_game = state_dict["pdn_game"]
 
             self.set_players((_pk_light, _pk_dark))
-            self.data_player_light.set_counter_man_king(*self.pieces.counter_man_king(EnumPlayersColor.P_LIGHT))
-            self.data_player_dark.set_counter_man_king(*self.pieces.counter_man_king(EnumPlayersColor.P_DARK))
 
     def _add_piece(self, row_index: int, col_index: int, value: int):
         id_dark_cell = Cells.coord2index(Coordinates2D(col_index, row_index))
@@ -212,6 +224,7 @@ class State:
     def set_players(self, pk_players:tuple[str,str]):
         self.data_player_light.engine, self.data_player_light.name = self.split_pk_player(pk_players[0])
         self.data_player_dark.engine , self.data_player_dark.name  = self.split_pk_player(pk_players[1])
+
         # If database I also merge the historical data from "history_database" 
         # into the Players
         if self.database:
@@ -219,6 +232,9 @@ class State:
             self.data_player_dark.load_history_data()
         self.data_player_light.reset()
         self.data_player_dark.reset()
+
+        self.data_player_light.set_counter_man_king(*self.pieces.counter_man_king(EnumPlayersColor.P_LIGHT))
+        self.data_player_dark.set_counter_man_king(*self.pieces.counter_man_king(EnumPlayersColor.P_DARK))
 
     def get_player(self, player:EnumPlayersColor)->str:
         return self.build_pk_player(self.data_players[player].engine, self.data_players[player].name)
@@ -305,9 +321,26 @@ class State:
     # - parity_move >= MAX_PARITY
     def check_game_over(self, number_moves:int, max_parity:int)->bool:
         if number_moves <= 0 or self.parity_move >= max_parity:
-            self.game_over = True
             if number_moves <= 0:
-                print(f"*** Winner {self.get_next_turn()} ! ***")
+                self.result = (                
+                    EnumResult.R_LIGHT if self.get_next_turn() == EnumPlayersColor.P_LIGHT
+                    else
+                    EnumResult.R_DARK
+                )
             else:
-                print(f"*** Match parity ! *** ")
+                self.result = EnumResult.R_PARITY
+
+        if self.result != EnumResult.R_NONE:
+            self.game_over = True
+            match self.result:
+                case EnumResult.R_LIGHT:
+                    print(f"*** Winner player LIGHT ! ***")
+                case EnumResult.R_DARK:
+                    print(f"*** Winner player DARK ! ***")
+                case EnumResult.R_PARITY:
+                    print(f"*** Match parity ! ***")
+
         return self.game_over
+
+    def force_result(self, result:EnumResult):
+        self.result = result

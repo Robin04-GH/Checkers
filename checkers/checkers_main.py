@@ -35,11 +35,13 @@ if __name__ == '__main__':
 	gateway: Gateway = Gateway()
 
 	# Graphical dependencies with the class factory method
-	graphics = GraphicsFactory.create_graphics(config_manager.graph_approach, gateway)
-	thread : threading.Thread = graphics.start()
-	graphics.wait_started()
+	if not config_manager.graphics_disabled:
+		graphics = GraphicsFactory.create_graphics(config_manager.graph_approach, gateway)
+		thread : threading.Thread = graphics.start()
+		graphics.wait_started()
 
 	checkerboard: Checkerboard = Checkerboard(config_manager, gateway)
 	checkerboard.execute_mode()
 
-	thread.join()
+	if not config_manager.graphics_disabled:
+		thread.join()

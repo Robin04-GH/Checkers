@@ -6,6 +6,7 @@ from enum import Enum
 class EnumExecutionMode(Enum):
     PLAY = "play"
     VIEW = "view"
+    SCAN = "scan"
     DATA = "data"
 
 class ConfigManager:
@@ -54,13 +55,19 @@ class ConfigManager:
 		#   "webapp" future extensions (Qt)
         self.graph_approach : str = self.get("Configuration", "graphics", default="console")
         
+        self.graphics_disabled = False        
+
 		# "mode" : type of execution mode
 		#   "play" checkers game between player 1 and player 2
 		#   "view" view checkers game from archive
+        #   "scan" like view mode but without graphics refresh
 		#   "data" Unsupervised Learning (UL) data extraction
         mode_str = self.get("Configuration", "mode", default="play")
-        try:
+        try:            
             self.execution_mode : EnumExecutionMode = EnumExecutionMode(mode_str)
+            if self.execution_mode == EnumExecutionMode.SCAN:
+                self.execution_mode = EnumExecutionMode.VIEW
+                self.graphics_disabled = True
         except ValueError:
             raise ValueError(f"Invalid execution mode '{mode_str}' in configuration")
 
@@ -90,7 +97,7 @@ class ConfigManager:
         
         # "parity_move" : Maximum number of moves without capturing any pieces and
         # without moving any mans (counted by both players)
-        self.parity_move : int = int(self.get("Configuration", "parity_move", default=80).strip())
+        self.parity_move : int = int(self.get("Configuration", "parity_move", default='80').strip())
 
 		# "restore" : restore checkerboards state from archive /restores
 		#   Hint: delete option if normal game start !

@@ -3,6 +3,7 @@ from datetime import datetime
 from checkers.data.data_interface import DataInterface
 from checkers.engine.game.move import Move
 from checkers.engine.game.pieces import EnumPlayersColor
+from checkers.engine.game.state import EnumResult
 #from checkers.engine.inference_interface import InferenceInterface
 
 class DatabaseManager(DataInterface):
@@ -55,13 +56,13 @@ class DatabaseManager(DataInterface):
     def is_open(self)->bool:
         return self._is_open
     
-    def game_data(self, id_game:str):
+    def game_data(self, id_game:str)->bool:
         self._pk_game = id_game
 
         # if '_pk_game' is present (read from db or write after restore) 
         # only checks the presence of the match identifier, otherwise adds the 
         # new match row generating the unique '_pk_game' with '_generate_datetime()' !
-        pass
+        return True
 
     def get_id_game(self)->str:
         return self._pk_game
@@ -84,7 +85,10 @@ class DatabaseManager(DataInterface):
     def set_move(self, move:Move):
         pass
 
-    def set_result(self, result:int):
+    def get_result(self)->EnumResult:
+        pass
+
+    def set_result(self, result:EnumResult):
         # When the game is over set '_pk_game' to the next game (cyclic)
         pass
 

@@ -175,7 +175,7 @@ def parse_pdn(file_path):
     return parsed_games
 
 # Esempio di utilizzo
-file_path = 'pdn/2008_Assoluti.txt'  # sostituisci con il percorso del tuo file
+file_path = 'pdn/CI2008.pdn'  # sostituisci con il percorso del tuo file
 
 partite = parse_pdn(file_path)
 
