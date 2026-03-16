@@ -10,6 +10,7 @@ from checkers.engine.game.resources import Resources
 
 from checkers.engine.game.moves_player import MovesPlayer
 from checkers.engine.game.move import Move
+from checkers.constant import TIMEOUT_SELECTED,TIMEOUT_DESTINATED, TIMEOUT_VALIDATED
 
 class Checkerboard():
     """
@@ -61,6 +62,8 @@ class Checkerboard():
     
     def play_mode(self):
         with Resources(self.config, self.state) as resources:
+            resources.match()
+            self.sender.timeout(self.config.timeout_view, TIMEOUT_DESTINATED, TIMEOUT_VALIDATED)
             self.run_match_loop(resources)
         """
         self.resources.initialize()
@@ -72,24 +75,21 @@ class Checkerboard():
 
     def run_match_loop(self, resources:Resources):
         while not self.state.exit:          
-            if not resources.match():
-                self.state.exit = False
-                break
             resources.players()
             resources.reset_inference_cache()
-            
-            # Game start
-            self.sender.reset()
-            self.sender_pieces()
+            self.sender_new_game()
 
             while not self.state.game_over and not self.state.exit:
                 self.run_turn(resources)
 
-            resources.next_match()
+            if not self.state.exit:
+                resources.next_match()
 
-    def sender_pieces(self):
-        for cell_piece in self.state.pieces.iter_players_pieces():
-            self.sender.players_pieces(cell_piece)
+    def sender_new_game(self):
+        if not self.config.graphics_disabled:
+            self.sender.reset()
+            for cell_piece in self.state.pieces.iter_players_pieces():
+                self.sender.players_pieces(cell_piece)
 
     def run_turn(self, resources:Resources):
         """
@@ -100,18 +100,12 @@ class Checkerboard():
             all_moves : set[Move] = moves_player.get_all_moves()
             move : Optional[Move] = self._compute_move(all_moves, resources)
 
-            # end-of-game test        
-            if self._is_game_over(all_moves):          
-                return
-            
+            self.state.check_game_over(len(all_moves), self.config.parity_move)            
             self._execute_move(moves_player, move)
+            
             # saving data to database
             self._persist_turn(move)
-
             self.state.set_next_turn()
-
-    def _is_game_over(self, all_moves:set[Move])->bool:
-        return self.state.check_game_over(len(all_moves), self.config.parity_move)
 
     def _compute_move(self, all_moves:set[Move], resources:Resources)->Optional[Move]:
         inference = resources.get_inference_source()
@@ -123,14 +117,15 @@ class Checkerboard():
             self.state.force_result(inference.get_result())
         return move
 
-    def _execute_move(self, moves_player:MovesPlayer, move:Optional[Move]):
+    def _execute_move(self, moves_player:MovesPlayer, move:Optional[Move]):        
         if self.config.graphics_disabled:
-            print(f"{self.state.number_move} : move {self.state.player_turn} = {move}")
-            self.state.update(move)
-            self.graph_output_channel.receiver.dispatcher(self.receiving)
+            if not self.state.game_over:
+                print(f"{move.__repr__(self.state.number_move, self.state.player_turn)}")
+                self.state.update(move)
+                self.graph_output_channel.receiver.dispatcher(self.receiving)
         else:
             # sequence move (scheduler) and graphics refresh
-            gen = self.move_sequence.run(moves_player, move)
+            gen = self.move_sequence.run(moves_player, move, self.state.game_over)
             for step in gen:
                 if self.state.exit:
                     break

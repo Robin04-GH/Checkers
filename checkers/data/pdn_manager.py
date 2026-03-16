@@ -301,6 +301,7 @@ class PdnManager(DataInterface):
                 enum_result = EnumResult.R_STAR
             case _:                
                 enum_result = EnumResult.R_NONE                
+        
         return enum_result
 
     def _comment_exclusion(self) -> str:

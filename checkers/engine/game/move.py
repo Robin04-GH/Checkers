@@ -3,7 +3,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
-from checkers.engine.game.cells import Cells, EnumMove
+from checkers.engine.game.cells import EnumMove
+from checkers.engine.game.pieces import EnumPlayersColor
 from checkers.constant import MAX_CELL_MOVE
 
 # To make the class formally immutable, use @dataclass(frozen=True).
@@ -232,7 +233,15 @@ class Move:
         _destinations = self.destinations[:-1]
         _captures = self.captures[:-1] if len(self.captures) else tuple()
         return Move(self.origin, _destinations, _captures)
-
+    
+    def __repr__(self, number_move:int, player:EnumPlayersColor)->str:
+        str_player : str = "Light" if player == EnumPlayersColor.P_LIGHT else "Dark"
+        return (
+            f"Move {number_move} " +
+            str_player + 
+            f" = from {self.origin} to {self.destinations}, capture = {self.captures}"
+        )
+    
 """
 Hint: the source cell is external to Move; it will be the key of the dict whose value 
 is the tree or move set.

@@ -18,7 +18,7 @@ class GraphOutputReceiving:
                 self.state.exit = True            
             case "SAVE_QUIT":
                 self.state.save()
-                self.state.exit = True            
+                self.state.exit = True  
             case _:
                 pass
         return 0
@@ -41,5 +41,10 @@ class GraphOutputReceiving:
                 self.move_sequence.set_step(EnumEngineMoving.MS_QST_SELECT)
             else:
                 self.move_sequence.validated_move(move)
+        return 0
+    
+    def game_over(self)->int:
+        if self.move_sequence.get_step() != EnumEngineMoving.MS_IDLE:
+            self.move_sequence.answer_game_over()
         return 0
 

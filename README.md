@@ -56,6 +56,11 @@
 #   Hint: Valid only with' import_pdn' !
 #   String containing order number of the match where the 'view' from PDN begins
 
+# "timeout_view" : timeout in msec for moves steps in view mode. 
+# Setting it to zero will make the timeout infinite; to continue, a keyboard (space) or 
+# mouse (left-click) event is required
+#   Hint: valid only in 'view' mode !
+
 # "seed" : use for randomization with testable determinism
 
 # Hint: TODO UL type option (with archive /dataset) !

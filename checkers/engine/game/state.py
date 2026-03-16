@@ -240,8 +240,8 @@ class State:
         return self.build_pk_player(self.data_players[player].engine, self.data_players[player].name)
     
     def print_playes(self):
-        print(f"Light= {self.get_player(EnumPlayersColor.P_LIGHT)}")
-        print(f"Dark = {self.get_player(EnumPlayersColor.P_DARK )}")
+        print(f"Light = {self.get_player(EnumPlayersColor.P_LIGHT)}")
+        print(f"Dark  = {self.get_player(EnumPlayersColor.P_DARK )}")
 
     def set_counter_captured(self, id_dark_cell:int):
         _next_turn : EnumPlayersColor = self.get_next_turn()
@@ -249,8 +249,9 @@ class State:
             self.data_players[_next_turn].counter_man  -= 1
         else:
             self.data_players[_next_turn].counter_king -= 1
+        str_player : str = "Light" if _next_turn == EnumPlayersColor.P_LIGHT else "Dark"
         print(
-            f"Player {_next_turn} : "
+            f"Piece " + str_player + " : "
             f"man={self.data_players[_next_turn].counter_man}, "
             f"king={self.data_players[_next_turn].counter_king}"
         )
@@ -258,8 +259,9 @@ class State:
     def set_counter_promoted(self):
         self.data_players[self.player_turn].counter_king += 1
         self.data_players[self.player_turn].counter_man  -= 1
+        str_player : str = "Light" if self.player_turn == EnumPlayersColor.P_LIGHT else "Dark"
         print(
-            f"Player {self.player_turn} : "
+            f"Piece " + str_player + " : "
             f"man={self.data_players[self.player_turn].counter_man}, "
             f"king={self.data_players[self.player_turn].counter_king}"
         )
@@ -330,15 +332,16 @@ class State:
             else:
                 self.result = EnumResult.R_PARITY
 
+        results : dict[EnumResult, str] = {
+            EnumResult.R_LIGHT : "*** Winner player LIGHT ! ***",
+            EnumResult.R_DARK : "*** Winner player DARK ! ***", 
+            EnumResult.R_PARITY : "*** Match parity ! ***",
+            EnumResult.R_STAR : "Result not specified !"
+        }
+
         if self.result != EnumResult.R_NONE:
             self.game_over = True
-            match self.result:
-                case EnumResult.R_LIGHT:
-                    print(f"*** Winner player LIGHT ! ***")
-                case EnumResult.R_DARK:
-                    print(f"*** Winner player DARK ! ***")
-                case EnumResult.R_PARITY:
-                    print(f"*** Match parity ! ***")
+            print(results[self.result])
 
         return self.game_over
 

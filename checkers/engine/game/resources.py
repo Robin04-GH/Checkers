@@ -163,23 +163,22 @@ class Resources:
         if self.state.pdn:
             self.pdn_manager.close_data()
 
-    def match(self)->bool:
+    def match(self):
         """
         Match data management:
          1) with 'view' from PDN examine header data and copy 'pdn_game' to state.
          2) with database writing generate 'pk_game', if not already present, and copy it to state
         """
-        ret : bool = False
 
         if self.pdn_manager:
             if not self.pdn_manager.is_open():
                 raise ValueError(f"PdnManager not open or game not present !")
             
-            if self.pdn_manager.game_data(self.state.pdn_game):
-                print(f"Match number " + self.state.pdn_game)
-                ret = True
-            else:
-                print(f"Match number " + self.state.pdn_game + " not present !")
+            str_match = "Match number " + self.state.pdn_game
+            if not self.pdn_manager.game_data(self.state.pdn_game):
+                str_match += " not present !"
+                self.state.exit = True
+            print(str_match)
 
         if self.db_manager:
             if not self.db_manager.is_open():
@@ -187,8 +186,6 @@ class Resources:
 
             self.db_manager.game_data(self.state.pk_game)
             self.state.pk_game = self.db_manager.get_id_game()
-
-        return ret
 
     def next_match(self):
         if self.config.execution_mode == EnumExecutionMode.VIEW:
@@ -199,6 +196,8 @@ class Resources:
                 self.state.pk_game = self.db_manager.next_game()
         else:
             self.state.pk_game = ""
+
+        self.match()
 
     def players(self):   
         """

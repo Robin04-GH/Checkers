@@ -125,6 +125,12 @@ class ConfigManager:
         self.pdn_game : Optional[str] = self.get("Configuration", "pdn_game", default=None)
         if not self.pdn_game or not self.pdn_game.isdigit():
             self.pdn_game = "1"
+
+        # "timeout_view" : timeout in msec for moves steps in view mode. 
+        # Setting it to zero will make the timeout infinite; to continue, a keyboard (space) or 
+        # mouse (left-click) event is required
+        #   Hint: valid only in 'view' mode !
+        self.timeout_view : int = int(self.get("Configuration", "timeout_view", default='2000').strip())
         
         # "seed" : use for randomization with testable determinism
         seed = self.get("Configuration", "seed", default=None)

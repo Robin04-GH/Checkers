@@ -147,7 +147,8 @@ class MovesPlayer(MoveRules):
                 self._actual_move = self._actual_move.remove_last()
     
     def finalize_move(self, move:Move)->bool:
-        print(f"Move = {move}")
+        print(f"{move.__repr__(self.state.number_move, self.state.player_turn)}")
+
         if self._actual_move != move:
             raise ValueError(f"Class MovesPlayer, finalize_move() : unsynchronized move !")        
         

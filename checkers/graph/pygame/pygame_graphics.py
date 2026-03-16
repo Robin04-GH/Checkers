@@ -51,7 +51,8 @@ class PygameGraphics(GraphicsInterface):
         Handles input events
         """
         self.event_manager.dispatcher(pygame.event.get())
-        self.event_manager.key_pressed()
+        # self.event_manager.key_pressed()
+        self.event_manager.key_mods()
 
     def refresh_timers(self):            
         """

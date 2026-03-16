@@ -15,6 +15,7 @@ class EnumGraphOutput(enum.Enum):
     GO_SELECTED_CELL = 2
     GO_DESTINATED_CELL = 3
     GO_TERMINATE_MOVE = 4
+    GO_GAME_OVER = 5
 
 DISPATCH_GRAPH_OUTPUT_MAP: Dict[int, HandlerType] = {
     EnumGraphOutput.GO_NONE.value: lambda inst, data: None,
@@ -22,6 +23,7 @@ DISPATCH_GRAPH_OUTPUT_MAP: Dict[int, HandlerType] = {
     EnumGraphOutput.GO_SELECTED_CELL.value: lambda inst, data: inst.selected_cell(data[0]),
     EnumGraphOutput.GO_DESTINATED_CELL.value: lambda inst, data: inst.destinated_cell(data[0]),
     EnumGraphOutput.GO_TERMINATE_MOVE.value: lambda inst, data: inst.terminate_move(data[0]),
+    EnumGraphOutput.GO_GAME_OVER.value: lambda inst, data: inst.game_over(),
 }
 
 # protocol
@@ -30,6 +32,7 @@ class ProtGraphOutput(Protocol):
     def selected_cell(self, cell:int)->int: ...
     def destinated_cell(self, index:int)->int: ...
     def terminate_move(self, move:Optional[Move])->int: ...
+    def game_over(self)->int: ...
 
 class GraphOutputSender:
     """
@@ -59,6 +62,9 @@ class GraphOutputSender:
 
     def terminate_move(self, move:Optional[Move])->int:
         return self._send(EnumGraphOutput.GO_TERMINATE_MOVE, move)
+    
+    def game_over(self)->int:
+        return self._send(EnumGraphOutput.GO_GAME_OVER)
 
 class GraphOutputReceiver:
     """
