@@ -3,7 +3,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
-from checkers.engine.game.cells import EnumMove
+from checkers.engine.game.cells import EnumMove, Coordinates2D, Cells
 from checkers.engine.game.pieces import EnumPlayersColor
 from checkers.constant import MAX_CELL_MOVE
 
@@ -176,8 +176,8 @@ class Node:
 @dataclass(frozen=True)
 class Move:
     origin : int
-    destinations : tuple[int]
-    captures : tuple[int] = ()
+    destinations : tuple[int, ...]
+    captures : tuple[int, ...] = ()
     """
     Type class to represent a move
     """
@@ -224,6 +224,9 @@ class Move:
     def __hash__(self)->int:
         return hash((self.origin, self.destinations, self.captures))
     
+    def as_tuple(self)->tuple[int, ...]:
+        return (self.origin, *self.destinations)
+
     def set_capture(self, destination:int, capture:int):
         _destinations = (*self.destinations, destination)
         _captures = (*self.captures, capture)

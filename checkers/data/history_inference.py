@@ -1,7 +1,7 @@
 from checkers.engine.inference_interface import InferenceInterface
 from checkers.data.data_interface import DataInterface
 from checkers.engine.game.move import Move
-from checkers.engine.game.state import EnumResult
+from checkers.engine.game.state import EnumResult, State
 
 class HistoryInference(InferenceInterface):
     """
@@ -14,10 +14,21 @@ class HistoryInference(InferenceInterface):
             raise ValueError(
                 f"Class HistoryInference, __init__(): data acquisition class not specified"
             )
+        self.last_history_move : tuple[int, ...] | None = None
 
-    def run(self, moves:set[Move])->Move | None:
-        history_move : tuple[int, ...] | None = self.data.get_move()
-
+    def run(self, moves:set[Move], state:State)->Move | None:
+        history_move : tuple[int, ...] | None = None
+        if not state.is_undo():
+            if self.last_history_move is None:
+                history_move = self.data.next_move()
+            else:
+                history_move = self.last_history_move
+                self.last_history_move = None        
+        else:
+            if self.last_history_move is None:
+                self.last_history_move = self.data.get_move()
+            history_move = state.get_undo_move()        
+        
         if history_move is None:
             return None
         

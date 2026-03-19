@@ -126,12 +126,26 @@ class ConfigManager:
         if not self.pdn_game or not self.pdn_game.isdigit():
             self.pdn_game = "1"
 
-        # "timeout_view" : timeout in msec for moves steps in view mode. 
+        # "timeout_selected" : timeout selected in msec for moves steps in view mode. 
         # Setting it to zero will make the timeout infinite; to continue, a keyboard (space) or 
         # mouse (left-click) event is required
         #   Hint: valid only in 'view' mode !
-        self.timeout_view : int = int(self.get("Configuration", "timeout_view", default='2000').strip())
+        timeout_selected : int = int(self.get("Configuration", "timeout_selected", default='2000').strip())
         
+        # "timeout_destinated" : timeout destinated in msec for moves steps in view mode. 
+        # Setting it to zero will make the timeout infinite; to continue, a keyboard (space) or 
+        # mouse (left-click) event is required
+        #   Hint: valid only in 'view' mode !
+        timeout_destinated : int = int(self.get("Configuration", "timeout_destinated", default='2000').strip())
+        
+        # "timeout_validated" : timeout validated in msec for moves steps in view mode. 
+        # Setting it to zero will make the timeout infinite; to continue, a keyboard (space) or 
+        # mouse (left-click) event is required
+        #   Hint: valid only in 'view' mode !
+        timeout_validated : int = int(self.get("Configuration", "timeout_validated", default='2000').strip())
+        
+        self.timeouts_view : tuple[int, int, int] = timeout_selected, timeout_destinated, timeout_validated
+
         # "seed" : use for randomization with testable determinism
         seed = self.get("Configuration", "seed", default=None)
         self.seed : Optional[int] = int(seed) if seed is not None else None

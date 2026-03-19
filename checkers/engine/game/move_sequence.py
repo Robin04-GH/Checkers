@@ -4,6 +4,7 @@ from collections.abc import Generator
 from checkers.channels.graph_input import ProtGraphInput
 from checkers.engine.game.moves_player import MovesPlayer
 from checkers.engine.game.move import Move
+from checkers.engine.game.state import StateMove
 
 # Class to define the state of the MoveSequence
 @enum.unique
@@ -16,7 +17,8 @@ class EnumEngineMoving(enum.IntEnum):
     MS_VALIDING_MOVE = 5
     MS_QST_GAME_OVER = 6
     MS_ASW_GAME_OVER = 7
-    MS_END = 8
+    MS_REQ_UNDO = 8
+    MS_END = 9
 
 class MoveSequence:
     """
@@ -48,6 +50,7 @@ class MoveSequence:
             # EnumEngineMoving.MS_VALIDING_MOVE : self.validated_move,
             EnumEngineMoving.MS_QST_GAME_OVER : self.question_game_over,
             # EnumEngineMoving.MS_ASW_GAME_OVER : self.answer_game_over,
+            EnumEngineMoving.MS_REQ_UNDO : self.request_undo,
             EnumEngineMoving.MS_END : self.end
         }
 
@@ -73,9 +76,6 @@ class MoveSequence:
 
     def idle(self):
         pass
-
-    def end(self):
-        self._in_moving = False
 
     # send message to selectable cells
     def question_select(self):
@@ -125,3 +125,13 @@ class MoveSequence:
 
     def answer_game_over(self):
         self._step = EnumEngineMoving.MS_END
+
+    def request_undo(self, state_move:StateMove):
+        self.sender.request_undo(state_move)
+        # Hint: if undo is not possible I leave the sequence step unchanged !
+        if state_move:
+            self._step = EnumEngineMoving.MS_END
+
+    def end(self):
+        self._in_moving = False
+

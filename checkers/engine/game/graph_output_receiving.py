@@ -1,5 +1,5 @@
 from typing import Optional
-from checkers.engine.game.state import State
+from checkers.engine.game.state import StateMove, State
 from checkers.engine.game.move_sequence import EnumEngineMoving, MoveSequence
 from checkers.engine.game.move import Move
 
@@ -47,4 +47,9 @@ class GraphOutputReceiving:
         if self.move_sequence.get_step() != EnumEngineMoving.MS_IDLE:
             self.move_sequence.answer_game_over()
         return 0
-
+    
+    def undo(self)->int:
+        if self.move_sequence.get_step() != EnumEngineMoving.MS_IDLE:
+            state_move : StateMove | None = self.state.restore_undo_move()
+            self.move_sequence.request_undo(state_move)
+        return 0

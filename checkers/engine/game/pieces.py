@@ -89,11 +89,9 @@ class Pieces:
         # if the cell contains no pieces it returns zero
         return self._reverse_dict.get(id_dark_cell, 0)
         
-    def check_promotion_king(self, id_dark_cell:int, player:EnumPlayersColor)->bool:
-        # check for the presence of a piece on the specified cell
-        self.check_busy_cell(id_dark_cell)        
-
+    def check_promotion_king(self, id_dark_cell:int)->bool:
         # check base cell
+        player = self.get_player(id_dark_cell)
         if not (
             (player == EnumPlayersColor.P_DARK and id_dark_cell >= MAX_DARK_CELLS - 4) or
             (player == EnumPlayersColor.P_LIGHT and id_dark_cell < 4)
@@ -102,7 +100,7 @@ class Pieces:
 
         id_piece = self.get_id_piece(id_dark_cell)
         Pieces.check_valid_piece(id_piece)
-    
+
         # promotion to King
         if abs(id_piece) > MAX_MAN:
             return False
@@ -114,6 +112,24 @@ class Pieces:
         self._reverse_dict[id_dark_cell] = id_piece  
         return True
     
+    def demotion_man(self, id_dark_cell:int)->bool:
+        # check for the presence of a piece on the specified cell
+        self.check_busy_cell(id_dark_cell)
+
+        id_piece = self.get_id_piece(id_dark_cell)
+        Pieces.check_valid_piece(id_piece)
+
+        # demotion to Man
+        if abs(id_piece) <= MAX_MAN:
+            return False
+        
+        if MAX_MAN < id_piece <= MAX_KING: 
+            id_piece -= MAX_MAN
+        elif -MAX_MAN > id_piece >= -MAX_KING:
+            id_piece += MAX_MAN
+        self._reverse_dict[id_dark_cell] = id_piece  
+        return True
+
     # funcion generating a player's pieces 
     def iter_player_cells(self, player:EnumPlayersColor)->Generator[int, None, None]:
         for (cell, piece) in self._reverse_dict.items():

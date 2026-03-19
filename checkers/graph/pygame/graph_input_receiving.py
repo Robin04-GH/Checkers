@@ -1,5 +1,6 @@
 from checkers.types import DestCellsType
 from checkers.graph.pygame.pygame_state import PygameState
+from checkers.engine.game.state import StateMove
 
 class GraphInputReceiving:
     """
@@ -12,8 +13,8 @@ class GraphInputReceiving:
         # print(f"Msg=" + string + f" Val={value}")
         return 0
 
-    def timeout(self, selected:int, destinated:int, validated:int)->int:
-        self.state.set_timeout(selected, destinated, validated)
+    def timeouts_view(self, timeouts:tuple[int, int, int])->int:
+        self.state.set_timeouts(timeouts)
         return 0
 
     def reset(self)->int:
@@ -56,4 +57,14 @@ class GraphInputReceiving:
     def game_over(self)->int:
         print(f"Press SPACE or left-click to continue ...")
         self.state.set_game_over(True)
+        return 0
+    
+    def request_undo(self, state_move:StateMove)->int:
+        if state_move is None:
+            self.state.set_lock(False)
+            print("Empty undo buffer !")
+            return 0
+
+        self.state.restore_state_move(state_move)
+        print("Undo executed !")
         return 0

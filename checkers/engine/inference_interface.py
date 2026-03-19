@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from checkers.engine.game.move import Move
-from checkers.engine.game.state import EnumResult
+from checkers.engine.game.state import EnumResult, State
 
 class InferenceInterface(ABC):
     """
@@ -9,13 +9,7 @@ class InferenceInterface(ABC):
     """
 
     @abstractmethod
-    def run(self, moves:set[Move])->Move | None:
-        """
-        """        
-        pass
-
-    @abstractmethod
-    def get_result(self)->EnumResult:
+    def run(self, moves:set[Move], state:State)->Move | None:
         """
         """        
         pass

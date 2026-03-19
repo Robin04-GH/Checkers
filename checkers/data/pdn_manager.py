@@ -209,7 +209,8 @@ class PdnManager(DataInterface):
         self._number_move : int = 1
         self._player_turn : EnumPlayersColor = EnumPlayersColor.P_LIGHT  
 
-        self.lexer : PdnLexer = PdnLexer()      
+        self.lexer : PdnLexer = PdnLexer()  
+        self.last_move : Optional[tuple[int, ...]] = None
 
     def open_data(self, filename:str)->bool:
         # Check presence and opening of PDN files
@@ -243,7 +244,7 @@ class PdnManager(DataInterface):
         # Test
         # self.set_turn(27, EnumPlayersColor.P_LIGHT)
         # for i in range(10):
-        #     move = self.get_move()
+        #     move = self.next_move()
         
     def get_id_game(self)->str:
         return str(self._pdn_game)
@@ -269,6 +270,9 @@ class PdnManager(DataInterface):
             self._number_move += 1
 
     def get_move(self)->Optional[tuple[int, ...]]:
+        return self.last_move
+
+    def next_move(self)->Optional[tuple[int, ...]]:
         move = self.lexer.read_move()
 
         if move is None:
@@ -281,6 +285,8 @@ class PdnManager(DataInterface):
         else:
             # print(f"Move {self._number_move} : {self._player_turn} = {move}")
             self.next_turn()        
+
+        self.last_move = move
 
         return move
     

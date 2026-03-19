@@ -10,7 +10,6 @@ from checkers.engine.game.resources import Resources
 
 from checkers.engine.game.moves_player import MovesPlayer
 from checkers.engine.game.move import Move
-from checkers.constant import TIMEOUT_SELECTED,TIMEOUT_DESTINATED, TIMEOUT_VALIDATED
 
 class Checkerboard():
     """
@@ -63,7 +62,7 @@ class Checkerboard():
     def play_mode(self):
         with Resources(self.config, self.state) as resources:
             resources.match()
-            self.sender.timeout(self.config.timeout_view, TIMEOUT_DESTINATED, TIMEOUT_VALIDATED)
+            self.sender.timeouts_view(self.config.timeouts_view)
             self.run_match_loop(resources)
         """
         self.resources.initialize()
@@ -105,14 +104,14 @@ class Checkerboard():
             
             # saving data to database
             self._persist_turn(move)
-            self.state.set_next_turn()
+            self.state.set_turn()
 
     def _compute_move(self, all_moves:set[Move], resources:Resources)->Optional[Move]:
         inference = resources.get_inference_source()
         # return inference.run(all_moves) if inference else None
         if not inference:
             return None
-        move = inference.run(all_moves)
+        move = inference.run(all_moves, self.state)
         if move is None:
             self.state.force_result(inference.get_result())
         return move

@@ -67,8 +67,10 @@ class PygameEventManager:
                 self.start_moving(Coordinates2D(col=x, row=y))                
             # right
             case 3:
-                # TODO : back move ...
-                pass
+                if not self.state.get_pause():
+                    self.state.set_pause(True)
+                else:
+                    self.undo()
             case 2 | _:
                 pass
 
@@ -122,6 +124,7 @@ class PygameEventManager:
 
         elif event.key == pygame.K_BACKSPACE:
             self.debug("Pressed BACKSPACE")
+            self.undo()
 
         elif event.key == pygame.K_ESCAPE:
             self.debug("Pressed ESCAPE")
@@ -163,6 +166,7 @@ class PygameEventManager:
 
         elif event.key == pygame.K_ESCAPE:
             self.debug("Released ESCAPE")
+
     """
     def key_pressed(self):
         keys = pygame.key.get_pressed()
@@ -259,6 +263,11 @@ class PygameEventManager:
                 self.state.set_viewer_mode(False)
             case _:
                 pass
+
+    def undo(self):
+        if self.state.get_viewer_mode():
+            self.state.set_lock(True)
+            self.sender.undo()
 
     def save_and_quit(self, event:Event):
         self.sender.print_string(f"SAVE_QUIT")

@@ -56,7 +56,17 @@
 #   Hint: Valid only with' import_pdn' !
 #   String containing order number of the match where the 'view' from PDN begins
 
-# "timeout_view" : timeout in msec for moves steps in view mode. 
+# "timeout_selected" : timeout selected in msec for moves steps in view mode. 
+# Setting it to zero will make the timeout infinite; to continue, a keyboard (space) or 
+# mouse (left-click) event is required
+#   Hint: valid only in 'view' mode !
+
+# "timeout_destinated" : timeout destinated in msec for moves steps in view mode. 
+# Setting it to zero will make the timeout infinite; to continue, a keyboard (space) or 
+# mouse (left-click) event is required
+#   Hint: valid only in 'view' mode !
+
+# "timeout_validated" : timeout validated in msec for moves steps in view mode. 
 # Setting it to zero will make the timeout infinite; to continue, a keyboard (space) or 
 # mouse (left-click) event is required
 #   Hint: valid only in 'view' mode !

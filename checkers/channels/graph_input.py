@@ -2,6 +2,7 @@ import enum
 from typing import Protocol, Callable, Dict, Any
 from checkers.types import DestCellsType
 from checkers.channels.shared_data import Message, SharedData
+from checkers.engine.game.state import StateMove
 
 HandlerType = Callable[["ProtGraphInput", tuple[Any, ...]], None]
 
@@ -12,36 +13,39 @@ HandlerType = Callable[["ProtGraphInput", tuple[Any, ...]], None]
 class EnumGraphInput(enum.Enum):
     GI_NONE = 0
     GI_STRING = 1
-    GI_TIMEOUT = 2
+    GI_TIMEOUTS = 2
     GI_RESET = 3
     GI_CELL_PIECE = 4
     GI_SELECTION_CELLS = 5
     GI_DESTINATION_CELLS = 6
     GI_PROMOTED_KING = 7
     GI_GAME_OVER = 8
+    GI_UNDO = 9
 
 DISPATCH_GRAPH_INPUT_MAP: Dict[int, HandlerType] = {
     EnumGraphInput.GI_NONE.value: lambda inst, data: None,
     EnumGraphInput.GI_STRING.value: lambda inst, data: inst.print_string(*data),
-    EnumGraphInput.GI_TIMEOUT.value: lambda inst, data: inst.timeout(*data),
+    EnumGraphInput.GI_TIMEOUTS.value: lambda inst, data: inst.timeouts_view(*data),
     EnumGraphInput.GI_RESET.value: lambda inst, data: inst.reset(),
     EnumGraphInput.GI_CELL_PIECE.value: lambda inst, data: inst.players_pieces(data[0]),
     EnumGraphInput.GI_SELECTION_CELLS.value: lambda inst, data: inst.selection_cells(*data),
     EnumGraphInput.GI_DESTINATION_CELLS.value: lambda inst, data: inst.destination_cells(*data),
     EnumGraphInput.GI_PROMOTED_KING.value: lambda inst, data: inst.promoted_king(*data),
     EnumGraphInput.GI_GAME_OVER.value: lambda inst, data: inst.game_over(),
+    EnumGraphInput.GI_UNDO.value: lambda inst, data: inst.request_undo(data[0]),
 }
 
 # protocol
 class ProtGraphInput(Protocol):
     def print_string(self, string:str, value:float)->int: ...
-    def timeout(self, selected:int, destinated:int, validated:int)->int: ...
+    def timeouts_view(self, timeouts:tuple[int, int, int])->int: ...
     def reset(self)->int: ...
     def players_pieces(self, cell_piece:tuple[int, int])->int: ...
     def selection_cells(self, cells:tuple[int, ...], selected_cell:int | None = None)->int: ...
     def destination_cells(self, cells:DestCellsType, previous_index:int, destinated_index:int | None = None)->int: ...
     def promoted_king(self, cell:int)->int: ...
     def game_over(self)->int: ...
+    def request_undo(self, state_move:StateMove)->int: ...
 
 class GraphInputSender:
     """
@@ -63,8 +67,8 @@ class GraphInputSender:
     def print_string(self, string:str, value:float)->int:
         return self._send(EnumGraphInput.GI_STRING, string, value)
 
-    def timeout(self, selected:int, destinated:int, validated:int)->int:
-        return self._send(EnumGraphInput.GI_TIMEOUT, selected, destinated, validated)
+    def timeouts_view(self, timeouts:tuple[int, int, int])->int:
+        return self._send(EnumGraphInput.GI_TIMEOUTS, timeouts)
 
     def reset(self)->int:
         return self._send(EnumGraphInput.GI_RESET)
@@ -83,6 +87,9 @@ class GraphInputSender:
 
     def game_over(self)->int:
         return self._send(EnumGraphInput.GI_GAME_OVER)
+
+    def request_undo(self, state_move:StateMove)->int:
+        return self._send(EnumGraphInput.GI_UNDO, state_move)
 
 class GraphInputReceiver:
     """

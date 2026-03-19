@@ -2,13 +2,14 @@ import enum
 from typing import Optional
 from checkers.types import DestCellsType
 from checkers.constant import DIM_CKECKERBOARD, MAX_CELL_MOVE, CELL_WIDTH
-from checkers.constant import TIMEOUT_SELECTED,TIMEOUT_DESTINATED, TIMEOUT_VALIDATED
 from checkers.engine.game.cells import Coordinates2D, Cells
 from checkers.engine.game.move import Move
+from checkers.engine.game.pieces import Pieces
+from checkers.engine.game.state import StateMove
 from checkers.graph.pygame.pygame_elements import EnumStateCell, PygameCell, EnumStatePiece, PygamePiece
 from checkers.graph.pygame.pygame_layers import PygameLayers
 from checkers.graph.pygame.pygame_constrain import EnumPygameMoving, Constrain
-from checkers.engine.game.pieces import Pieces
+from dataclasses import dataclass
 check_valid_piece = Pieces.check_valid_piece
 
 @enum.unique
@@ -17,6 +18,13 @@ class EnumEventMoves(enum.Enum):
     E_SELECTED = 1
     E_DESTINATED = 2
     E_VALIDATED = 3
+
+@dataclass
+class ViewerData:
+    mode : bool = False
+    timer : int = 0
+    type : EnumEventMoves = EnumEventMoves.E_NONE
+    target : int = -1
 
 class PygameState(PygameLayers, Constrain):
     """
@@ -36,14 +44,10 @@ class PygameState(PygameLayers, Constrain):
                     Cells.check_valid_cell(id_dark_cell)
                     self.state_checkerboard[id_dark_cell] = PygameCell(id_dark_cell)
         self.active_cell_timers : list[int] = []
-        self._viewer_mode : bool = False
-        self._viewer_timer : int = 0
-        self._viewer_type : EnumEventMoves = EnumEventMoves.E_NONE
-        self._viewer_target : int = -1
+        self._viewer : ViewerData = ViewerData()
+        self._timeouts : tuple[int, int, int] = (0, 0, 0)
         self._pause : bool = False
-        self._timeout_selected : int = TIMEOUT_SELECTED
-        self._timeout_destinated : int = TIMEOUT_DESTINATED
-        self._timeout_validated : int = TIMEOUT_VALIDATED
+        self._lock : bool = False
         self._game_over : bool = False
 
     def reset(self):
@@ -72,9 +76,11 @@ class PygameState(PygameLayers, Constrain):
         if self.get_piece(id_dark_cell) == None:
             raise KeyError(f"Specified id cell {id_dark_cell} is empty !")
         
-        id_piece = self.state_checkerboard[id_dark_cell].piece.id_piece
+        cell : PygameCell = self.state_checkerboard[id_dark_cell]
+        id_piece = cell.piece.id_piece
         # del self.state_checkerboard[id_dark_cell].piece
-        self.state_checkerboard[id_dark_cell].piece = None
+        cell.piece = None
+        self.draw_piece_fix(cell)
         return id_piece
 
     def set_selection_cells(self, cells:tuple[int, ...]):
@@ -140,11 +146,12 @@ class PygameState(PygameLayers, Constrain):
                     return True
         return False
 
-    def stop_moving(self)->Optional[Move]:
+    def stop_moving(self, abort:bool = False)->Optional[Move]:
         move : Move = None
         is_completed : bool = False
-        if self.destination_cells.count(-1) == MAX_CELL_MOVE - 1 and self.previous_index != -1:
-            is_completed = True
+        if not abort:
+            if self.destination_cells.count(-1) == MAX_CELL_MOVE - 1 and self.previous_index != -1:
+                is_completed = True
 
         self.finalize_move()
 
@@ -158,13 +165,16 @@ class PygameState(PygameLayers, Constrain):
             self.finalize_selected_cell(self.selected_cell)
             self.finalize_captured_cell(True)
             
+        self.clear_moving()
+        return move
+
+    def clear_moving(self):
         self.move_captures.clear()
         self.move_destinations.clear()
         self.delete_destination_cells()
         self.previous_index = -1
         self.state_moving = EnumPygameMoving.M_IDLE
         # print(f"EnumPygameMoving.M_IDLE")        
-        return move
 
     def set_destination_cells(self, dest_cells:DestCellsType, previous_index:int):
         # Hint: I may lose the selection while waiting for the destination cells !
@@ -330,69 +340,87 @@ class PygameState(PygameLayers, Constrain):
 
         return index
         
-    def set_timeout(self, selected:int, destinated:int, validated:int):
-        self._timeout_selected = selected
-        self._timeout_destinated = destinated
-        self._timeout_validated = validated
+    def set_timeouts(self, timeouts:tuple[int, int, int]):
+        self._timeouts = timeouts
 
     def viewer_timer(self, elapsed:int)->EnumEventMoves:            
-        if self._viewer_mode:
-            if self._viewer_type != EnumEventMoves.E_NONE:
+        if self._viewer.mode:
+            if self._viewer.type != EnumEventMoves.E_NONE:
                 if self.get_pause():
                     elapsed = 0
 
-                if self._viewer_timer > 0:
-                    self._viewer_timer -= elapsed
-                    if self._viewer_timer <= 0:
-                        match self._viewer_type:
+                if self._viewer.timer > 0:
+                    self._viewer.timer -= elapsed
+                    if self._viewer.timer <= 0:
+                        match self._viewer.type:
                             case EnumEventMoves.E_SELECTED:
-                                self.set_selected_cell(self._viewer_target)
+                                self.set_selected_cell(self._viewer.target)
                                 if self.start_moving(self.selected_cell):
-                                    return self._viewer_type
+                                    return self._viewer.type
                                 
                             case EnumEventMoves.E_DESTINATED:
-                                self.set_position_keyboard(self._viewer_target)
-                                return self._viewer_type
+                                self.set_position_keyboard(self._viewer.target)
+                                return self._viewer.type
                             
                             case EnumEventMoves.E_VALIDATED:
-                                return self._viewer_type
+                                return self._viewer.type
         
         return EnumEventMoves.E_NONE
     
     def get_viewer_mode(self)->bool:
-        return self._viewer_mode
+        return self._viewer.mode
 
     def set_viewer_mode(self, mode:bool):
-        self._viewer_mode = mode
+        self._viewer.mode = mode
 
     def finaling_viewer_timer(self):
-        if self._viewer_mode and self._viewer_type != EnumEventMoves.E_NONE:
-            self._viewer_timer = 1
+        if self._viewer.mode and self._viewer.type != EnumEventMoves.E_NONE:
+            self._viewer.timer = 1
 
     def set_timer_selected(self, cell:int):
-        self._viewer_timer = self._timeout_selected
-        self._viewer_type = EnumEventMoves.E_SELECTED
-        self._viewer_target = cell
+        self._viewer.timer = self._timeouts[0]
+        self._viewer.type = EnumEventMoves.E_SELECTED
+        self._viewer.target = cell
 
     def set_timer_destinated(self, index:int):
-        self._viewer_timer = self._timeout_destinated
-        self._viewer_type = EnumEventMoves.E_DESTINATED
-        self._viewer_target = index
+        self._viewer.timer = self._timeouts[1]
+        self._viewer.type = EnumEventMoves.E_DESTINATED
+        self._viewer.target = index
 
     def set_timer_validated(self):
-        self._viewer_timer = self._timeout_validated
-        self._viewer_type = EnumEventMoves.E_VALIDATED
+        self._viewer.timer = self._timeouts[2]
+        self._viewer.type = EnumEventMoves.E_VALIDATED
 
     def get_pause(self)->bool:
         return self._pause
 
     def set_pause(self, status:bool):
         if status != self._pause:
-            print(f"Pause Enabled") if status == True else print(f"Pause Disabled")                 
-            self._pause = status
+            if self._viewer.mode and not self._lock:
+                print(f"Pause Enabled") if status == True else print(f"Pause Disabled")                 
+                self._pause = status
+
+    def set_lock(self, status:bool):
+        if status != self._lock:
+            self._lock = status
 
     def get_game_over(self)->bool:
         return self._game_over
     
     def set_game_over(self, status:bool):
         self._game_over = status
+
+    def restore_state_move(self, state_move:StateMove):
+        # Cancellation of any temporary move in progress
+        if self.state_moving == EnumPygameMoving.M_SELECTION:
+            self.delete_selection_cells()
+            self.clear_moving()
+        else:
+            self.stop_moving(True)
+
+        # restore previous state with state_move
+        self.add_piece(state_move.move.origin, state_move.piece_move)
+        self.del_piece(state_move.move.destinations[-1])
+        for index_cell, id_dark_cell in enumerate(state_move.move.captures):
+            self.add_piece(id_dark_cell, state_move.pieces_captured[index_cell])
+        self.set_lock(False)

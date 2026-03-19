@@ -10,6 +10,7 @@ from checkers.engine.game.cells import Coordinates2D
 from checkers.engine.game.pieces import Cells, Pieces, EnumPlayersColor
 from checkers.engine.game.player_stats import PlayerStats
 from checkers.engine.game.move import Move
+from dataclasses import dataclass
 
 # Class used to define the outcome of the match.
 @enum.unique
@@ -19,6 +20,14 @@ class EnumResult(enum.Enum):
     R_DARK = 2
     R_PARITY = 3
     R_STAR = 4
+
+@dataclass(frozen=True)
+class StateMove():
+    move : Move
+    piece_move : int
+    pieces_captured : tuple[int, ...]
+    promoted_king : bool
+    old_parity : int
 
 class State:
     """
@@ -54,6 +63,10 @@ class State:
         self.exit : bool = False
         self.game_over : bool = False
         self.result : EnumResult = EnumResult.R_NONE
+        self.in_viewer : bool = False
+        self.undo_state : list[StateMove] = []
+        self.undo_index : int = -1
+        self.reverse_turn : bool = False
 
     # Initial position of pieces on the checkerboard
     def reset(self, pk_players:tuple[str,str]):
@@ -70,6 +83,9 @@ class State:
         self.parity_move = 0
         self.game_over = False
         self.result = EnumResult.R_NONE
+        self.undo_state.clear()
+        self.undo_index = -1
+        self.reverse_turn = False
 
         self.set_players(pk_players)
 
@@ -80,6 +96,7 @@ class State:
             raise FileNotFoundError(f"File {path_file} not found !")
         
         self.pieces.clear()
+        self.undo_state.clear()
 
         with open(path_file,"r") as file_restore:
             state_dict = json.load(file_restore)
@@ -243,27 +260,26 @@ class State:
         print(f"Light = {self.get_player(EnumPlayersColor.P_LIGHT)}")
         print(f"Dark  = {self.get_player(EnumPlayersColor.P_DARK )}")
 
-    def set_counter_captured(self, id_dark_cell:int):
-        _next_turn : EnumPlayersColor = self.get_next_turn()
+    def set_counter_captured(self, id_dark_cell:int, player:EnumPlayersColor, step:int):
         if self.pieces.is_man(id_dark_cell):
-            self.data_players[_next_turn].counter_man  -= 1
+            self.data_players[player].counter_man  -= step
         else:
-            self.data_players[_next_turn].counter_king -= 1
-        str_player : str = "Light" if _next_turn == EnumPlayersColor.P_LIGHT else "Dark"
+            self.data_players[player].counter_king -= step
+        str_player : str = "Light" if player == EnumPlayersColor.P_LIGHT else "Dark"
         print(
             f"Piece " + str_player + " : "
-            f"man={self.data_players[_next_turn].counter_man}, "
-            f"king={self.data_players[_next_turn].counter_king}"
+            f"man={self.data_players[player].counter_man}, "
+            f"king={self.data_players[player].counter_king}"
         )
 
-    def set_counter_promoted(self):
-        self.data_players[self.player_turn].counter_king += 1
-        self.data_players[self.player_turn].counter_man  -= 1
-        str_player : str = "Light" if self.player_turn == EnumPlayersColor.P_LIGHT else "Dark"
+    def set_counter_promoted(self, player:EnumPlayersColor, step:int):
+        self.data_players[player].counter_king += step
+        self.data_players[player].counter_man  -= step
+        str_player : str = "Light" if player == EnumPlayersColor.P_LIGHT else "Dark"
         print(
             f"Piece " + str_player + " : "
-            f"man={self.data_players[self.player_turn].counter_man}, "
-            f"king={self.data_players[self.player_turn].counter_king}"
+            f"man={self.data_players[player].counter_man}, "
+            f"king={self.data_players[player].counter_king}"
         )
 
     def get_least_one_king(self)->bool:
@@ -287,17 +303,27 @@ class State:
             else EnumPlayersColor.P_LIGHT
         )
 
-    def set_next_turn(self):
+    def set_turn(self):
         if self.player_turn == EnumPlayersColor.P_LIGHT:
             self.player_turn = EnumPlayersColor.P_DARK
+            if self.reverse_turn:
+                self.reverse_turn = False
+                self.number_move -= 1
         else:
             self.player_turn = EnumPlayersColor.P_LIGHT
-            self.number_move += 1
-    
+            if not self.reverse_turn:
+                self.number_move += 1
+            else:
+                self.reverse_turn = False
+
+    def set_in_viewer(self, status:bool):
+        self.in_viewer = status
+
     def update(self, move:Move)->bool:
         # The game is declared a draw when, with both players having at least one king,
         # 40 moves have occurred on each side (reducible to 10) without any pieces 
-        # being captured and without any mans having moved (kings only).        
+        # being captured and without any mans having moved (kings only).      
+        old_parity : int = self.parity_move
         if self.get_least_one_king() and len(move.captures) == 0 and self.pieces.is_king(move.origin):
             self.parity_move += 1
             print(f"Parity move = {self.parity_move}")
@@ -305,19 +331,60 @@ class State:
             self.parity_move = 0
 
         # Board status update
-        _destination : int = move.destinations[-1]
-        self.pieces.update_position(move.origin, _destination)
+        list_captured : list[int] = []
+        destination : int = move.destinations[-1]
+        self.pieces.update_position(move.origin, destination)
         for id_dark_cell in move.captures:
-            self.set_counter_captured(id_dark_cell)
+            list_captured.append(self.pieces.get_id_piece(id_dark_cell))
+            self.set_counter_captured(id_dark_cell, self.get_next_turn(), 1)
             self.pieces.remove_pieces(id_dark_cell)
 
         # A man can only be promoted to a king once a move has been completed.
-        _is_promoted_king = self.pieces.check_promotion_king(_destination, self.player_turn)
+        piece_move = self.pieces.get_id_piece(destination)
+        _is_promoted_king = self.pieces.check_promotion_king(destination)
         if _is_promoted_king:
-            self.set_counter_promoted()
+            self.set_counter_promoted(self.player_turn, 1)
+
+        # undo states
+        if self.in_viewer:
+            if not self.is_undo():
+                state_move : StateMove = StateMove(
+                    move,
+                    piece_move,
+                    tuple(list_captured),
+                    _is_promoted_king,
+                    old_parity
+                )
+                self.undo_state.append(state_move)
+            self.undo_index += 1
 
         return _is_promoted_king
     
+    def is_undo(self)->bool:
+        return self.undo_index < (len(self.undo_state) - 1)
+    
+    def get_undo_move(self)->tuple[int, ...]:
+        move = self.undo_state[self.undo_index + 1].move
+        return move.as_tuple()
+
+    def restore_undo_move(self)->StateMove | None:
+        if self.undo_index >= 0:
+            # restore state
+            state_move : StateMove = self.undo_state[self.undo_index]
+            self.pieces.update_position(state_move.move.destinations[-1], state_move.move.origin)
+            if state_move.promoted_king:
+                self.pieces.demotion_man(state_move.move.origin)
+                self.set_counter_promoted(self.get_next_turn(), -1)
+            for index_cell, id_dark_cell in enumerate(state_move.move.captures):
+                self.pieces.add_pieces(id_dark_cell, state_move.pieces_captured[index_cell])
+                self.set_counter_captured(id_dark_cell, self.player_turn, -1)
+            self.parity_move = state_move.old_parity
+            self.undo_index -= 1
+            self.reverse_turn = True
+            return state_move
+        else:
+            return None
+
     # Test end of game:
     # - no possible move or no piece
     # - parity_move >= MAX_PARITY

@@ -58,10 +58,17 @@ class DataInterface(ABC):
         pass
 
     @abstractmethod
+    # Returns last move or None.
+    def get_move(self)->Optional[tuple[int, ...]]:
+        """
+        """        
+        pass
+
+    @abstractmethod
     # Returns the next move or None if finished.
     # The return tuple indicates the start and end cell
     # Hint: The parser uses the 'x' separator for capture moves, and '-' for simple moves ! 
-    def get_move(self)->Optional[tuple[int, ...]]:
+    def next_move(self)->Optional[tuple[int, ...]]:
         """
         """        
         pass

@@ -82,6 +82,9 @@ class DatabaseManager(DataInterface):
     def get_move(self)->Optional[tuple[int, ...]]:
         pass
 
+    def next_move(self)->Optional[tuple[int, ...]]:
+        pass
+
     def set_move(self, move:Move):
         pass
 

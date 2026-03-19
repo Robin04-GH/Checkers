@@ -150,6 +150,9 @@ class Resources:
             self.pdn_manager = PdnManager() 
             if not self.pdn_manager.open_data(self.state.pdn):
                 raise ValueError(f"Open {self.state.pdn} error !")
+            
+        if self.pdn_manager or self.db_in_read:
+            self.state.set_in_viewer(True)
                         
     def _finalize(self):
         """
