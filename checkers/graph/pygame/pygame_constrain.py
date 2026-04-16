@@ -2,7 +2,7 @@
 # just add this directive (Python >=3.10)
 from __future__ import annotations
 import enum, math
-from checkers.types import DestCellsType
+from checkers.checkers_types import DestCellsType
 from checkers.engine.game.cells import Coordinates2D
 
 from typing import Tuple, NamedTuple, Optional

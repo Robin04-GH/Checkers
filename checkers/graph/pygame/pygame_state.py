@@ -1,6 +1,6 @@
 import enum
 from typing import Optional
-from checkers.types import DestCellsType
+from checkers.checkers_types import DestCellsType
 from checkers.constant import DIM_CKECKERBOARD, MAX_CELL_MOVE, CELL_WIDTH
 from checkers.engine.game.cells import Coordinates2D, Cells
 from checkers.engine.game.move import Move
@@ -419,8 +419,8 @@ class PygameState(PygameLayers, Constrain):
             self.stop_moving(True)
 
         # restore previous state with state_move
-        self.add_piece(state_move.move.origin, state_move.piece_move)
+        self.add_piece(state_move.move.origin, state_move.moved_piece)
         self.del_piece(state_move.move.destinations[-1])
         for index_cell, id_dark_cell in enumerate(state_move.move.captures):
-            self.add_piece(id_dark_cell, state_move.pieces_captured[index_cell])
+            self.add_piece(id_dark_cell, state_move.captured_pieces[index_cell])
         self.set_lock(False)

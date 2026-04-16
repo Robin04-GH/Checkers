@@ -3,7 +3,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
-from checkers.types import DestCellsType
+from checkers.checkers_types import DestCellsType
 from checkers.constant import MAX_DARK_CELLS, DIM_CKECKERBOARD
 import enum
 

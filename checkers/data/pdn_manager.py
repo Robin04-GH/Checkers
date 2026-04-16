@@ -4,7 +4,7 @@ from typing import Optional
 from checkers.constant import PATH_PDN
 from checkers.data.data_interface import DataInterface
 from checkers.engine.game.pieces import EnumPlayersColor
-from checkers.engine.game.state import EnumResult
+from checkers.engine.game.state import EnumResult, StateMove
 from collections import defaultdict
 #from dataclasses import dataclass, field
 
@@ -253,9 +253,10 @@ class PdnManager(DataInterface):
         self._pdn_game += 1
         return str(self._pdn_game)
 
-    def get_players(self)->tuple[str, str]:
-        if self._light_players is not None and self._dark_players is not None:
-            return self._light_players, self._dark_players
+    # Returns tuples in (P_LIGHT, P_DARK) order, with engine and name
+    def get_pk_players(self)->tuple[tuple[str, str, str, str]]:
+        # Hint: engines are not present in PDN !
+        return None, self._light_players, None, self._dark_players
 
     def set_turn(self, number_move:int, player_turn:EnumPlayersColor):
         self._number_move = number_move
@@ -309,6 +310,19 @@ class PdnManager(DataInterface):
                 enum_result = EnumResult.R_NONE                
         
         return enum_result
+
+    def write_game(self, pk_game:str, pk_players:tuple[str,str,str,str]):
+        pass
+
+    def write_move(
+            self, 
+            number_move:int, player_turn:EnumPlayersColor, state_move:StateMove,
+            state_checkerboard:list[int] = None
+        ):
+        pass
+
+    def write_result(self, result:EnumResult):
+        pass
 
     def _comment_exclusion(self) -> str:
         """

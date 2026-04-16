@@ -24,8 +24,8 @@ class EnumResult(enum.Enum):
 @dataclass(frozen=True)
 class StateMove():
     move : Move
-    piece_move : int
-    pieces_captured : tuple[int, ...]
+    moved_piece : int
+    captured_pieces : tuple[int, ...]
     promoted_king : bool
     old_parity : int
 
@@ -64,6 +64,7 @@ class State:
         self.game_over : bool = False
         self.result : EnumResult = EnumResult.R_NONE
         self.in_viewer : bool = False
+        self.last_state_move : StateMove | None = None
         self.undo_state : list[StateMove] = []
         self.undo_index : int = -1
         self.reverse_turn : bool = False
@@ -172,7 +173,7 @@ class State:
         self.pieces.add_pieces(id_dark_cell, value)
 
     def save(self):
-        path_file : str = PATH_RESTORES + "state_" + self.generate_datetime()
+        path_file : str = PATH_RESTORES + "state_" + self.generate_datetime() + ".json"
         if os.path.exists(path_file):
             print(f"Warning: File {path_file} will be overwritten !")
 
@@ -216,15 +217,30 @@ class State:
         except ValueError as e:
             print(f"Error serializing JSON: {e}")
 
-    def generate_checkerboard(self):
+    def generate_checkerboard(self)->list[list[int]]:
         return [
             [self.pieces.get_id_piece(Cells.coord2index(Coordinates2D(col_index, row_index)))
             for col_index in range(DIM_CKECKERBOARD)] 
             for row_index in range(DIM_CKECKERBOARD)
         ]
 
+    def get_dark_cells_state(self)->list[int]:
+        return [
+            self.pieces.get_id_piece(dark_cell) for dark_cell in range(MAX_DARK_CELLS)
+        ]
+
     def build_pk_player(self, engine:str, name:str)->str:
+        if not engine:
+            engine = "player"
         return engine + ": " + name
+
+    def pk_players_as_tuple(self)->tuple[str,str,str,str]:
+        return (
+            self.data_players[EnumPlayersColor.P_LIGHT].engine,
+            self.data_players[EnumPlayersColor.P_LIGHT].name,
+            self.data_players[EnumPlayersColor.P_DARK].engine,
+            self.data_players[EnumPlayersColor.P_DARK].name,
+        )
 
     def split_pk_player(self, pk_player:str)->tuple[str,str]:
         engine, player = pk_player.split(":")
@@ -232,11 +248,11 @@ class State:
         # engine, player = [part.strip() for part in pk_player.split(":")]
         return (engine.strip(), player.strip())
 
-    def add_engine_players(self, engine:str, players:tuple[str,str])->tuple[str,str]:
-        return (
-            self.build_pk_player(engine, players[0]),
-            self.build_pk_player(engine, players[1])
-        )
+    def get_pk_player(self, player:EnumPlayersColor)->str:
+        return self.build_pk_player(self.data_players[player].engine, self.data_players[player].name)
+
+    def get_engine(self)->str:
+        return self.data_players[self.player_turn].engine
 
     def set_players(self, pk_players:tuple[str,str]):
         self.data_player_light.engine, self.data_player_light.name = self.split_pk_player(pk_players[0])
@@ -253,12 +269,10 @@ class State:
         self.data_player_light.set_counter_man_king(*self.pieces.counter_man_king(EnumPlayersColor.P_LIGHT))
         self.data_player_dark.set_counter_man_king(*self.pieces.counter_man_king(EnumPlayersColor.P_DARK))
 
-    def get_player(self, player:EnumPlayersColor)->str:
-        return self.build_pk_player(self.data_players[player].engine, self.data_players[player].name)
-    
-    def print_playes(self):
-        print(f"Light = {self.get_player(EnumPlayersColor.P_LIGHT)}")
-        print(f"Dark  = {self.get_player(EnumPlayersColor.P_DARK )}")
+    def print_match(self):        
+        print(f"Pdn = {self.pdn_game}") if self.pdn_game else print(f"Pk = {self.pk_game}")
+        print(f"Light = {self.get_pk_player(EnumPlayersColor.P_LIGHT)}")
+        print(f"Dark  = {self.get_pk_player(EnumPlayersColor.P_DARK )}")
 
     def set_counter_captured(self, id_dark_cell:int, player:EnumPlayersColor, step:int):
         if self.pieces.is_man(id_dark_cell):
@@ -287,9 +301,6 @@ class State:
             self.data_players[self.player_turn].counter_king > 0 and
             self.data_players[self.get_next_turn()].counter_king > 0
         )
-
-    def get_engine(self)->str:
-        return self.data_players[self.player_turn].engine
 
     def generate_datetime(self)->str:
         # Generate datetime for primary key game (unique with microseconds).
@@ -345,17 +356,18 @@ class State:
         if _is_promoted_king:
             self.set_counter_promoted(self.player_turn, 1)
 
+        self.last_state_move = StateMove(
+            move,
+            piece_move,
+            tuple(list_captured),
+            _is_promoted_king,
+            old_parity
+        )
+
         # undo states
         if self.in_viewer:
             if not self.is_undo():
-                state_move : StateMove = StateMove(
-                    move,
-                    piece_move,
-                    tuple(list_captured),
-                    _is_promoted_king,
-                    old_parity
-                )
-                self.undo_state.append(state_move)
+                self.undo_state.append(self.last_state_move)
             self.undo_index += 1
 
         return _is_promoted_king
@@ -376,7 +388,7 @@ class State:
                 self.pieces.demotion_man(state_move.move.origin)
                 self.set_counter_promoted(self.get_next_turn(), -1)
             for index_cell, id_dark_cell in enumerate(state_move.move.captures):
-                self.pieces.add_pieces(id_dark_cell, state_move.pieces_captured[index_cell])
+                self.pieces.add_pieces(id_dark_cell, state_move.captured_pieces[index_cell])
                 self.set_counter_captured(id_dark_cell, self.player_turn, -1)
             self.parity_move = state_move.old_parity
             self.undo_index -= 1
@@ -408,9 +420,12 @@ class State:
 
         if self.result != EnumResult.R_NONE:
             self.game_over = True
+            self.last_state_move = None
             print(results[self.result])
 
         return self.game_over
 
     def force_result(self, result:EnumResult):
         self.result = result
+        if result == EnumResult.R_NONE:
+            print(f"Absense of further moves and result. Game not conclused !")

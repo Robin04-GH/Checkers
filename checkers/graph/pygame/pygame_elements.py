@@ -1,6 +1,6 @@
 import enum
 from typing import Optional, Callable
-from checkers.types import ColorType, RectType
+from checkers.checkers_types import ColorType, RectType
 from checkers.constant import MAX_MAN, MAX_KING, CELL_WIDTH, CELL_HEIGHT, TIMER_PRESCALER, BLENDING_DURATION
 from checkers.graph.pygame.colors import Colors
 from checkers.engine.game.cells import Coordinates2D, Cells

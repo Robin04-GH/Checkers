@@ -29,6 +29,8 @@ BLENDING_DURATION = 250
 # path
 PATH_RESTORES = "restores/"
 PATH_PDN = "pdn/"
+PATH_DATABASE = "database/"
+PATH_LOG = "log/"
 
 # maximum number of characters per line
 MAX_LINE_CHAR = 99999

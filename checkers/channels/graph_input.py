@@ -1,6 +1,6 @@
 import enum
 from typing import Protocol, Callable, Dict, Any
-from checkers.types import DestCellsType
+from checkers.checkers_types import DestCellsType
 from checkers.channels.shared_data import Message, SharedData
 from checkers.engine.game.state import StateMove
 

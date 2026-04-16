@@ -1,6 +1,6 @@
 from typing import Optional
 from checkers.constant import MAX_CELL_MOVE
-from checkers.types import DestCellsType
+from checkers.checkers_types import DestCellsType
 from checkers.engine.game.state import State
 from checkers.engine.game.move_rules import MoveRules
 from checkers.engine.game.move import Score, Node, Move, EnumMove

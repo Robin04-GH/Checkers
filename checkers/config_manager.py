@@ -68,6 +68,8 @@ class ConfigManager:
             if self.execution_mode == EnumExecutionMode.SCAN:
                 self.execution_mode = EnumExecutionMode.VIEW
                 self.graphics_disabled = True
+            elif self.execution_mode == EnumExecutionMode.DATA:
+                self.graphics_disabled = True
         except ValueError:
             raise ValueError(f"Invalid execution mode '{mode_str}' in configuration")
 

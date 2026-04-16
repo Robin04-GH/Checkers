@@ -1,4 +1,4 @@
-from checkers.types import DestCellsType
+from checkers.checkers_types import DestCellsType
 from checkers.graph.pygame.pygame_state import PygameState
 from checkers.engine.game.state import StateMove
 

@@ -1,7 +1,7 @@
 from typing import Optional
 from abc import ABC, abstractmethod
 from checkers.engine.game.pieces import EnumPlayersColor
-from checkers.engine.game.state import EnumResult
+from checkers.engine.game.state import EnumResult, StateMove
 
 class DataInterface(ABC):
     """
@@ -46,7 +46,7 @@ class DataInterface(ABC):
         pass
 
     @abstractmethod
-    def get_players(self)->tuple[str, str]:
+    def get_pk_players(self)->tuple[tuple[str, str, str, str]]:
         """
         """        
         pass
@@ -79,3 +79,24 @@ class DataInterface(ABC):
         """        
         pass
 
+    @abstractmethod
+    def write_game(self, pk_game:str, pk_players:tuple[str,str,str,str]):
+        """
+        """        
+        pass
+
+    @abstractmethod
+    def write_move(
+            self, 
+            number_move:int, player_turn:EnumPlayersColor, state_move:StateMove,
+            state_checkerboard:list[int] = None
+        ):
+        """
+        """        
+        pass
+
+    @abstractmethod
+    def write_result(self, result:EnumResult):
+        """
+        """        
+        pass

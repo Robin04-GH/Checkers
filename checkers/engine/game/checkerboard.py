@@ -99,12 +99,12 @@ class Checkerboard():
             all_moves : set[Move] = moves_player.get_all_moves()
             move : Optional[Move] = self._compute_move(all_moves, resources)
 
-            self.state.check_game_over(len(all_moves), self.config.parity_move)            
-            self._execute_move(moves_player, move)
-            
-            # saving data to database
-            self._persist_turn(move)
-            self.state.set_turn()
+            if self.state.check_game_over(len(all_moves), self.config.parity_move):
+                resources.persist_result()
+            if self._execute_move(moves_player, move):
+                # saving data to database
+                resources.persist_turn()
+                self.state.set_turn()
 
     def _compute_move(self, all_moves:set[Move], resources:Resources)->Optional[Move]:
         inference = resources.get_inference_source()
@@ -116,7 +116,7 @@ class Checkerboard():
             self.state.force_result(inference.get_result())
         return move
 
-    def _execute_move(self, moves_player:MovesPlayer, move:Optional[Move]):        
+    def _execute_move(self, moves_player:MovesPlayer, move:Optional[Move])->bool:        
         if self.config.graphics_disabled:
             if not self.state.game_over:
                 print(f"{move.__repr__(self.state.number_move, self.state.player_turn)}")
@@ -129,10 +129,7 @@ class Checkerboard():
                 if self.state.exit:
                     break
                 self.graph_output_channel.receiver.dispatcher(self.receiving)
-
-    def _persist_turn(self, move:Move):
-        # TODO save to .db
-        pass
+        return not self.state.exit
 
     def data_mode(self):
-        print(f"Data Mode")
+        self.resources.db_reader()

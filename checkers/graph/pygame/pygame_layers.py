@@ -1,7 +1,7 @@
 from enum import IntFlag, auto, unique
 from  typing import Optional
 import pygame
-from checkers.types import ColorType, RectType
+from checkers.checkers_types import ColorType, RectType
 from checkers.constant import SCREEN_WIDTH, SCREEN_HEIGHT, CELL_WIDTH, CELL_HEIGHT, DIM_CKECKERBOARD
 from checkers.graph.pygame.colors import Colors
 from checkers.engine.game.cells import Coordinates2D, Cells

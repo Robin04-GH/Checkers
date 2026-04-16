@@ -1,9 +1,10 @@
 import random
 from typing import Optional
 from checkers.config_manager import EnumExecutionMode, ConfigManager
-from checkers.engine.game.state import State
+from checkers.engine.game.state import StateMove, State
 from checkers.data.db_manager import DatabaseManager
 from checkers.data.pdn_manager import PdnManager
+from checkers.data.db_reader import DatabaseReader
 from checkers.data.data_interface import DataInterface
 from checkers.engine.inference_interface import InferenceInterface
 from checkers.engine.inference_factory import InferenceFactory
@@ -175,7 +176,7 @@ class Resources:
 
         if self.pdn_manager:
             if not self.pdn_manager.is_open():
-                raise ValueError(f"PdnManager not open or game not present !")
+                raise ValueError(f"PdnManager not open !")
             
             str_match = "Match number " + self.state.pdn_game
             if not self.pdn_manager.game_data(self.state.pdn_game):
@@ -185,22 +186,11 @@ class Resources:
 
         if self.db_manager:
             if not self.db_manager.is_open():
-                raise ValueError(f"DbManager not open or game not present !")
+                raise ValueError(f"DbManager not open !")
 
-            self.db_manager.game_data(self.state.pk_game)
+            if not self.db_manager.game_data(self.state.pk_game) and self.state.in_viewer and self.db_in_read:
+                raise ValueError(f"DbManager with pk = '{self.state.pk_game}' not present !")
             self.state.pk_game = self.db_manager.get_id_game()
-
-    def next_match(self):
-        if self.config.execution_mode == EnumExecutionMode.VIEW:
-            if self.pdn_manager:
-                self.state.pdn_game = self.pdn_manager.next_game()
-                
-            if self.db_manager:
-                self.state.pk_game = self.db_manager.next_game()
-        else:
-            self.state.pk_game = ""
-
-        self.match()
 
     def players(self):   
         """
@@ -215,8 +205,11 @@ class Resources:
         
         if self.restore == None:
             if self.config.execution_mode == EnumExecutionMode.VIEW:
-                players : tuple[str,str] = data_source.get_players()
-                pk_players : tuple[str,str] = self.state.add_engine_players("player", players)
+                items : tuple[str,str,str,str] = data_source.get_pk_players()
+                pk_players : tuple[str,str] = (
+                    self.state.build_pk_player(items[0], items[1]),
+                    self.state.build_pk_player(items[2], items[3])
+                )
             elif self.config.execution_mode == EnumExecutionMode.PLAY:
                 # Randomly assign colors to players
                 pk_players : tuple[str,str] = (self.player_light, self.player_dark)
@@ -229,13 +222,23 @@ class Resources:
             self.restore = None
 
         if data_source:
+            self.persist_game()            
             data_source.set_turn(self.state.number_move, self.state.player_turn)
-        self.state.print_playes()
+        self.state.print_match()
+
+    def next_match(self):
+        if self.config.execution_mode == EnumExecutionMode.VIEW:
+            if self.pdn_manager:
+                self.state.pdn_game = self.pdn_manager.next_game()
+                
+            if self.db_manager:
+                self.state.pk_game = self.db_manager.next_game() if self.db_in_read else ""
+        else:
+            self.state.pk_game = ""
+
+        self.match()
 
     def get_data_source(self)->DataInterface | None:
-        if self.config.execution_mode != EnumExecutionMode.VIEW:
-            return None
-
         # return self.pdn_manager if self.config.import_pdn_name else self.db_manager
         if self.pdn_manager:
             return self.pdn_manager
@@ -266,3 +269,27 @@ class Resources:
         )
             
         return self._inference_cache[inference_key]
+
+    def persist_game(self):
+        if self.db_manager and not self.db_in_read:
+            self.db_manager.write_game(self.state.pk_game, self.state.pk_players_as_tuple())
+
+    def persist_turn(self):
+        if self.db_manager:
+            if not self.db_in_read:
+                self.db_manager.write_move(
+                    self.state.number_move, self.state.player_turn, self.state.last_state_move,
+                    self.state.get_dark_cells_state())
+            else:
+                DatabaseReader.print_state(self.state.get_dark_cells_state())
+
+    def persist_result(self):
+        if self.db_manager and not self.db_in_read:
+            self.db_manager.write_result(self.state.result)
+    
+    def db_reader(self):
+        exit : bool = False
+        while not exit:
+            with DatabaseReader() as db_reader: 
+                db_reader.extract_information()
+                exit = db_reader.interactive_console()

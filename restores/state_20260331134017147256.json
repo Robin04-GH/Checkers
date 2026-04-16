@@ -86,8 +86,8 @@
     "parity_move": 0,
     "player_light": "player: name2 surname2",
     "player_dark": "player: name1 surname1",
-    "database": "",
-    "pk_game": "20260302173618596395",
+    "database": "states.db",
+    "pk_game": "20260330185922073964",
     "pdn": "",
     "pdn_game": ""
 }
