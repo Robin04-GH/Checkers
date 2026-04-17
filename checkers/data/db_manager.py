@@ -425,6 +425,10 @@ class DatabaseManager(DataInterface):
             print(f"[DatabaseManager] SQLite error in next_move(): {e}")
             raise
     
+    def notation_move(self, state_move: StateMove)->str:
+        separator : str = "x" if state_move.move.captures else "-"
+        return separator.join(str(cell) for cell in state_move.move.as_tuple())
+
     def write_move(
         self,
         number_move: int,
@@ -453,7 +457,7 @@ class DatabaseManager(DataInterface):
                 self._state.pk_game,
                 number_move,
                 player_turn.name,
-                "",  # notation
+                self.notation_move(state_move),
                 state_move.move.origin,
                 state_move.moved_piece,
                 int(state_move.promoted_king)
