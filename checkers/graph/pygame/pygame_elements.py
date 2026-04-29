@@ -134,7 +134,7 @@ class PygameCell(PygameBlending):
         )
         self.state : EnumStateCell = EnumStateCell.C_NORMAL        
         self.piece : Optional[PygamePiece] = None
-        # N.B.: dopo 'self.state' perche usata in 'self.get_color_cell' !
+        # Hint: dopo 'self.state' perche usata in 'self.get_color_cell' !
         super().__init__(self.get_color_cell)
 
     def reset(self):

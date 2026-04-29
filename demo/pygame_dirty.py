@@ -103,7 +103,7 @@ while running:
             draw_drag_piece()
             highlight_layer.fill((0, 0, 0, 0))
 
-            # N.B.: non ottimizzati i rettangoli highlight_layer e drag_layer
+            # Hint: non ottimizzati i rettangoli highlight_layer e drag_layer
             # difatto equivale ad un pygame.display.flip() !
             dirty_rects.append(pygame.Rect(gx*CELL, gy*CELL, CELL, CELL))
             dirty_rects.append(highlight_layer.get_rect())

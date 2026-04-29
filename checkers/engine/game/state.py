@@ -2,9 +2,8 @@ import os
 import enum
 import json
 from checkers.constant import MAX_MAN, MAX_KING, MAX_DARK_CELLS
-
 from checkers.constant import PATH_RESTORES
-from datetime import datetime
+from datetime import datetime, timezone
 from checkers.constant import DIM_CKECKERBOARD, MAX_DARK_CELLS, MAX_MAN
 from checkers.engine.game.cells import Coordinates2D
 from checkers.engine.game.pieces import Cells, Pieces, EnumPlayersColor
@@ -55,15 +54,15 @@ class State:
             EnumPlayersColor.P_LIGHT : self.data_player_light, 
             EnumPlayersColor.P_DARK  : self.data_player_dark 
         }    
-        # pk_game and database are used for database management in 'view' or active history
-        self.pk_game : str = ""
-        self.database : str = ""
-        self.pdn_game : str = ""
-        self.pdn : str = ""
+        # Data for restore import/export
+        self.import_name : str = ""
+        self.export_name : str = ""
+        self.import_game : str = ""
+        self.export_game : str = ""
+
         self.exit : bool = False
         self.game_over : bool = False
         self.result : EnumResult = EnumResult.R_NONE
-        self.in_viewer : bool = False
         self.last_state_move : StateMove | None = None
         self.undo_state : list[StateMove] = []
         self.undo_index : int = -1
@@ -142,31 +141,33 @@ class State:
                 raise ValueError(f"Missing 'player_dark' key !")
             _pk_dark : str = state_dict["player_dark"]
 
-            # Verify key 'database'
-            if "database" not in state_dict:
-                raise ValueError(f"Missing 'database' key !")
-            # Database history o view
-            self.database = state_dict["database"]
+            # Verify key 'import_name'
+            if "import_name" not in state_dict:
+                raise ValueError(f"Missing 'import_name' key !")
+            # filename.db/pdn for data import
+            self.import_name = state_dict["import_name"]
 
-            # Verify key 'pk_game'
-            if "pk_game" not in state_dict:
-                raise ValueError(f"Missing 'pk_game' key !")
-            # Non empty string only in 'play' with history active, or in 'view'
-            self.pk_game = state_dict["pk_game"]
+            # Verify key 'import_game'
+            if "import_game" not in state_dict:
+                raise ValueError(f"Missing 'import_game' key !")
+            # Non empty string only in 'view' with 'import_name'
+            self.import_game = state_dict["import_game"]
 
-            # Verify key 'pdn'
-            if "pdn" not in state_dict:
-                raise ValueError(f"Missing 'pdn' key !")
-            # Import PDN o view
-            self.pdn = state_dict["pdn"]
+            # Verify key 'export_name'
+            if "export_name" not in state_dict:
+                raise ValueError(f"Missing 'export_name' key !")
+            # filename.db/pdn for data export
+            self.export_name = state_dict["export_name"]
 
-            # Verify key 'pdn_game'
-            if "pdn_game" not in state_dict:
-                raise ValueError(f"Missing 'pdn_game' key !")
-            # Non empty string only in 'view' with 'import_pdn_name'
-            self.pdn_game = state_dict["pdn_game"]
+            # Verify key 'export_game'
+            if "export_game" not in state_dict:
+                raise ValueError(f"Missing 'export_game' key !")
+            # Non empty string only in 'view' with 'export_name'
+            self.export_game = state_dict["export_game"]
 
             self.set_players((_pk_light, _pk_dark))
+
+        print(f"Restored {filename}")
 
     def _add_piece(self, row_index: int, col_index: int, value: int):
         id_dark_cell = Cells.coord2index(Coordinates2D(col_index, row_index))
@@ -195,17 +196,17 @@ class State:
         state_dict["player_light"] = self.build_pk_player(self.data_player_light.engine, self.data_player_light.name)
         state_dict["player_dark"]  = self.build_pk_player(self.data_player_dark.engine , self.data_player_dark.name)
 
-        # Save database "history_database" with 'play/view'
-        state_dict["database"] = self.database
+        # Save filename.db/.pdn for data import
+        state_dict["import_name"] = self.import_name
 
-        # Save primary key of game
-        state_dict["pk_game"] = self.pk_game
+        # Save identifier import game
+        state_dict["import_game"] = self.import_game
 
-        # Save pdn "import_pdn_name" with 'view'
-        state_dict["pdn"] = self.pdn
+        # Save filename.db/.pdn for data export
+        state_dict["export_name"] = self.export_name
 
-        # Save counter pdn game
-        state_dict["pdn_game"] = self.pdn_game
+        # Save identifier export game
+        state_dict["export_game"] = self.export_game
 
         # Writes to JSON files with error handling
         try:
@@ -254,58 +255,63 @@ class State:
     def get_engine(self)->str:
         return self.data_players[self.player_turn].engine
 
+    def swap_players(self):
+        tmp_ps : PlayerStats = self.data_players[EnumPlayersColor.P_LIGHT]
+        self.data_players[EnumPlayersColor.P_LIGHT] = self.data_players[EnumPlayersColor.P_DARK]
+        self.data_players[EnumPlayersColor.P_DARK ] = tmp_ps
+
     def set_players(self, pk_players:tuple[str,str]):
-        self.data_player_light.engine, self.data_player_light.name = self.split_pk_player(pk_players[0])
-        self.data_player_dark.engine , self.data_player_dark.name  = self.split_pk_player(pk_players[1])
+        f_swap : bool = False
 
-        # If database I also merge the historical data from "history_database" 
-        # into the Players
-        if self.database:
-            self.data_player_light.load_history_data()
-            self.data_player_dark.load_history_data()
-        self.data_player_light.reset()
-        self.data_player_dark.reset()
+        # Controllo swap 
+        if (
+            self.get_pk_player(EnumPlayersColor.P_LIGHT) == pk_players[1] and
+            self.get_pk_player(EnumPlayersColor.P_DARK ) == pk_players[0]
+        ):
+            f_swap = True
+            self.swap_players()            
 
-        self.data_player_light.set_counter_man_king(*self.pieces.counter_man_king(EnumPlayersColor.P_LIGHT))
-        self.data_player_dark.set_counter_man_king(*self.pieces.counter_man_king(EnumPlayersColor.P_DARK))
+        for player, data_player in self.data_players.items():
+            if not f_swap:
+                data_player.init_player(*self.split_pk_player(pk_players[player.value]))
+            data_player.set_counter_man_king(*self.pieces.counter_man_king(player))
 
     def print_match(self):        
-        print(f"Pdn = {self.pdn_game}") if self.pdn_game else print(f"Pk = {self.pk_game}")
-        print(f"Light = {self.get_pk_player(EnumPlayersColor.P_LIGHT)}")
-        print(f"Dark  = {self.get_pk_player(EnumPlayersColor.P_DARK )}")
+        print(f"\nNew game :")
+        print(f"Light = {self.get_pk_player(EnumPlayersColor.P_LIGHT)} {self.data_players[EnumPlayersColor.P_LIGHT].print_stats()}")
+        print(f"Dark  = {self.get_pk_player(EnumPlayersColor.P_DARK )} {self.data_players[EnumPlayersColor.P_DARK ].print_stats()}")
 
     def set_counter_captured(self, id_dark_cell:int, player:EnumPlayersColor, step:int):
         if self.pieces.is_man(id_dark_cell):
-            self.data_players[player].counter_man  -= step
+            self.data_players[player].cnt_man  -= step
         else:
-            self.data_players[player].counter_king -= step
+            self.data_players[player].cnt_king -= step
         str_player : str = "Light" if player == EnumPlayersColor.P_LIGHT else "Dark"
         print(
             f"Piece " + str_player + " : "
-            f"man={self.data_players[player].counter_man}, "
-            f"king={self.data_players[player].counter_king}"
+            f"man={self.data_players[player].cnt_man}, "
+            f"king={self.data_players[player].cnt_king}"
         )
 
     def set_counter_promoted(self, player:EnumPlayersColor, step:int):
-        self.data_players[player].counter_king += step
-        self.data_players[player].counter_man  -= step
+        self.data_players[player].cnt_king += step
+        self.data_players[player].cnt_man  -= step
         str_player : str = "Light" if player == EnumPlayersColor.P_LIGHT else "Dark"
         print(
             f"Piece " + str_player + " : "
-            f"man={self.data_players[player].counter_man}, "
-            f"king={self.data_players[player].counter_king}"
+            f"man={self.data_players[player].cnt_man}, "
+            f"king={self.data_players[player].cnt_king}"
         )
 
     def get_least_one_king(self)->bool:
         return (
-            self.data_players[self.player_turn].counter_king > 0 and
-            self.data_players[self.get_next_turn()].counter_king > 0
+            self.data_players[self.player_turn].cnt_king > 0 and
+            self.data_players[self.get_next_turn()].cnt_king > 0
         )
 
     def generate_datetime(self)->str:
         # Generate datetime for primary key game (unique with microseconds).
-        # Hint: only returned, not assigned to self.pk_game !        
-        return datetime.now().strftime("%Y%m%d%H%M%S%f")
+        return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
 
     def get_next_turn(self)->EnumPlayersColor:
         return (
@@ -326,9 +332,6 @@ class State:
                 self.number_move += 1
             else:
                 self.reverse_turn = False
-
-    def set_in_viewer(self, status:bool):
-        self.in_viewer = status
 
     def update(self, move:Move)->bool:
         # The game is declared a draw when, with both players having at least one king,
@@ -364,8 +367,8 @@ class State:
             old_parity
         )
 
-        # undo states
-        if self.in_viewer:
+        # undo states only in view mode
+        if self.import_name:
             if not self.is_undo():
                 self.undo_state.append(self.last_state_move)
             self.undo_index += 1
@@ -397,6 +400,10 @@ class State:
         else:
             return None
 
+    def set_game_over(self):
+        self.game_over = True
+        self.last_state_move = None
+
     # Test end of game:
     # - no possible move or no piece
     # - parity_move >= MAX_PARITY
@@ -410,7 +417,7 @@ class State:
                 )
             else:
                 self.result = EnumResult.R_PARITY
-
+        
         results : dict[EnumResult, str] = {
             EnumResult.R_LIGHT : "*** Winner player LIGHT ! ***",
             EnumResult.R_DARK : "*** Winner player DARK ! ***", 
@@ -419,13 +426,13 @@ class State:
         }
 
         if self.result != EnumResult.R_NONE:
-            self.game_over = True
-            self.last_state_move = None
-            print(results[self.result])
+            self.set_game_over()
+            print(f"\n" + results[self.result])
 
         return self.game_over
 
     def force_result(self, result:EnumResult):
         self.result = result
         if result == EnumResult.R_NONE:
-            print(f"Absense of further moves and result. Game not conclused !")
+            print(f"\nAbsense of further moves and result. Game not conclused !")
+            self.set_game_over()

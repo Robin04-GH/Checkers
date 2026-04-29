@@ -3,8 +3,9 @@
 # Ignore the virtual environment
 env/
 
-# Ignore the 'del' folder on the root
+# Ignore the 'del' and 'demo' folder on the root
 /del/
+/demo/
 
 # Ignore Python temporary files
 *.pyc

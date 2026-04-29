@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from checkers.constant import PATH_LOG
 from checkers.data.db_manager import DatabaseManager
@@ -520,7 +520,7 @@ class DatabaseReader(DatabaseManager):
             if not os.path.isdir(PATH_LOG):
                 raise ValueError(f"Database path does not exist : {PATH_LOG}")   
              
-            self._name_log = "query_" + datetime.now().strftime("%d%H%M%S") + ".txt"
+            self._name_log = "query_" + datetime.now(timezone.utc).strftime("%d%H%M%S") + ".txt"
             filepath = os.path.join(PATH_LOG, self._name_log)
 
             with open(filepath, "w") as f:
@@ -546,4 +546,3 @@ class DatabaseReader(DatabaseManager):
 
             if index % 4 == 3:
                 print()
-        print()

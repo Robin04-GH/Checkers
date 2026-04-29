@@ -16,7 +16,7 @@ class Score:
     first_capture_king : int = 0
     type_move : EnumMove = EnumMove.M_NONE
     # does not determine score, only given storage
-    # N.B.: Score with only different last_capture_cell attribute are identical 
+    # Hint: score with only different last_capture_cell attribute are identical 
     # for the equality and hash operator !
     last_capture_cell : int = -1
     """
@@ -240,7 +240,7 @@ class Move:
     def __repr__(self, number_move:int, player:EnumPlayersColor)->str:
         str_player : str = "Light" if player == EnumPlayersColor.P_LIGHT else "Dark"
         return (
-            f"Move {number_move} " +
+            f"\nMove {number_move} " +
             str_player + 
             f" = from {self.origin} to {self.destinations}, capture = {self.captures}"
         )

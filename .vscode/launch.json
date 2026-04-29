@@ -36,7 +36,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/checkers/checkers_main.py",
-            "args": ["config_play.ini"],
+            "args": ["config.ini"],
             "python": "${workspaceFolder}/env/bin/python",
             "console": "integratedTerminal",   
             "justMyCode": true,

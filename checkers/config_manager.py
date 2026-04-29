@@ -105,28 +105,19 @@ class ConfigManager:
 		#   Hint: delete option if normal game start !
 		#   "<name_checkerboard> checkerboard state name
         self.restore_name : Optional[str] = self.get("Configuration", 'restore', default=None)
-        
-		# "history_database" : activation of historical game storage on database
-		# 	Hint: if omitted, storing does not occur !
-		#   "<name_database> database name for game to storage
-        self.history_db_name : Optional[str] = self.get("Configuration", 'history_database', default=None)
-        
-        # "pk_game" : game identifier to view
-        #   Hint: valid only in 'view' mode !
-        #   "<pk_game> game identifier in the chosen database (primary key=datetime)
-        self.pk_game : Optional[str] = self.get("Configuration", 'pk_game', default=None)
 
-        # "import_pdn" : PDN filename from which to view the game
-        #   Hint: valid only in 'view' mode !
-        #   "<name_pdn> PDN filename for import/view
-        self.import_pdn_name : Optional[str] = self.get("Configuration", "import_pdn", default=None)
-        
-        # "pdn_game" : game identifier in pdn (first game unless specified)
-        #   Hint: Valid only with' import_pdn' !
-        #   String containing order number of the match where the 'view' from PDN begins
-        self.pdn_game : Optional[str] = self.get("Configuration", "pdn_game", default=None)
-        if not self.pdn_game or not self.pdn_game.isdigit():
-            self.pdn_game = "1"
+		# "import_name" : resource name for data import (.db/.pdn)
+        self.import_name : Optional[str] = self.get("Configuration", 'import_name', default=None)
+
+        # "import_game" : identifier of the first game to import (default = 1)
+        #   Hint: it depends on the type of resource (order number for .pdn, order number 
+        #   or better pk for .db) !
+        self.import_game : Optional[str] = self.get("Configuration", "import_game", default=None)
+        if not self.import_game or not self.import_game.isdigit():
+            self.import_game = "1"
+
+		# "export_name" : resource name for data export (.db/.pdn)
+        self.export_name : Optional[str] = self.get("Configuration", 'export_name', default=None)
 
         # "timeout_selected" : timeout selected in msec for moves steps in view mode. 
         # Setting it to zero will make the timeout infinite; to continue, a keyboard (space) or 

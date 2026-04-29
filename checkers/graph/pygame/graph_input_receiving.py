@@ -55,7 +55,7 @@ class GraphInputReceiving:
         return 0
     
     def game_over(self)->int:
-        print(f"Press SPACE or left-click to continue ...")
+        print(f"Press SPACE or left-click to continue ...\n")
         self.state.set_game_over(True)
         return 0
     
@@ -66,5 +66,5 @@ class GraphInputReceiving:
             return 0
 
         self.state.restore_state_move(state_move)
-        print("Undo executed !")
+        print("Undo executed !\n")
         return 0

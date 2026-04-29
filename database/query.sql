@@ -108,10 +108,28 @@ GROUP BY ms.move_id
 HAVING total > 2;
 */
 
+/*
 -- Test implicit groupings (without GROUP BY)
 SELECT
    COUNT(id)
 FROM players 
+*/
+
+-- Test aggregate function (without GROUP BY)
+SELECT
+   COUNT(pk),
+   MIN(pk),
+   MAX(pk),
+   MIN(started_at),
+   MAX(started_at)
+FROM games
+
+/*
+-- Test nth match (example 123)
+SELECT * FROM games
+ORDER BY pk ASC
+LIMIT 1 OFFSET 123-1
+*/
 
 /*
 Database : ci2004.db, last match !

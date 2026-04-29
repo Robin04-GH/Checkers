@@ -397,7 +397,7 @@ class PygameState(PygameLayers, Constrain):
     def set_pause(self, status:bool):
         if status != self._pause:
             if self._viewer.mode and not self._lock:
-                print(f"Pause Enabled") if status == True else print(f"Pause Disabled")                 
+                print(f"\nPause Enabled") if status == True else print(f"Pause Disabled")   
                 self._pause = status
 
     def set_lock(self, status:bool):

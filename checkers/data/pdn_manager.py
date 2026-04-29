@@ -1,10 +1,12 @@
 import re
+import io
 import enum
 from typing import Optional
 from checkers.constant import PATH_PDN
 from checkers.data.data_interface import DataInterface
 from checkers.engine.game.pieces import EnumPlayersColor
 from checkers.engine.game.state import EnumResult, StateMove
+from checkers.data.db_manager import DatabaseManager
 from collections import defaultdict
 #from dataclasses import dataclass, field
 
@@ -154,12 +156,16 @@ class PdnLexer:
         
     # Place the cursor on 'number_move' to later read the 'player_turn' move
     def seek_move(self, number_move:int, player_turn:EnumPlayersColor)->bool:
-        str_number_move = str(number_move)
-        index = self._moves.find(str_number_move + '.')
-        if index >= 0:        
-            self._pos = index + len(str_number_move) + 1
+        # Hint: determine whether the .pdn file specifies the move number, ...
+        if self._moves.find('1.') >= 0:
+            str_number_move = str(number_move)
+            index = self._moves.find(str_number_move + '.')
+            if index >= 0:        
+                self._pos = index + len(str_number_move) + 1
+            else:
+                return False
         else:
-            # turn not found
+            # ... otherwise search without index
             jump_move = (number_move - 1) * 2
             while jump_move > 0:
                 if not self.read_move():
@@ -185,14 +191,14 @@ class EnumRowType(enum.Enum):
 class PdnManager(DataInterface):
     """
     Class for parsing game formats in PDN.
-    Used in 'view' mode for importing from PDN->DB with 'history_database'
-    or simply viewing games.    
+    Used for imports/exports game on PDN.
     """
 
     def __init__(self):
         self._pdn_name : str = ""
         self._pdn_game : int = 0
         self._file = None
+        self._in_restore : bool = False
 
         self._raw_line : str = ""
         self._buf_line : str = ""
@@ -202,22 +208,37 @@ class PdnManager(DataInterface):
 
         self._light_players : str = ""
         self._dark_players : str = ""
-        self._result : str = ""
+        self._result : str = ""        
         self._counter_game : int = 0
+
+        self._max_games : int = 0
+        self._max_number_move : int = 0
+        self._max_player_turn : EnumPlayersColor = EnumPlayersColor.P_LIGHT
+        self._max_result : EnumResult = EnumResult.R_NONE
+
         self._row_type : EnumRowType = EnumRowType.R_NONE
 
+        # In import, they are used to read moves, setting the initial turn at the start of the 
+        # game, with implicit increment in 'next_move()' to avoid arguments in the method.
+        # In export, however, the caller 'write_move()' passes the turn arguments and attributes.
+        # '_number_move'/'_player_turn' are used to check sequentiality.
         self._number_move : int = 1
         self._player_turn : EnumPlayersColor = EnumPlayersColor.P_LIGHT  
 
         self.lexer : PdnLexer = PdnLexer()  
         self.last_move : Optional[tuple[int, ...]] = None
 
-    def open_data(self, filename:str)->bool:
+    def open_data(self, filename:str, restore:str|None = None)->bool:
         # Check presence and opening of PDN files
         self._pdn_name = filename
+        if restore:
+            self._in_restore = True
+
         try:
-            # self._file = open(PATH_PDN + self._pdn_name, 'r', encoding='utf-8')
-            self._file = open(PATH_PDN + self._pdn_name, 'r', encoding='iso-8859-1')
+            self._file = open(PATH_PDN + self._pdn_name, 'a+', encoding='iso-8859-1')
+
+            # Game count contained in the file (self._max_game), and moves present in the last game
+            self._search_max_games_moves()
             return True
         except:            
             self.close_data()
@@ -229,14 +250,47 @@ class PdnManager(DataInterface):
 
     def is_open(self)->bool:
         return not self._file.closed
-        
+
     def game_data(self, id_game:str)->bool:
         """
         Positioning file cursor at the requested game_id.
+
+        Hint: a 'game_id' is relative to the PDN file. Therefore, a game imported from a 
+        PDN with a 'game_id' will be appended to the export PDN with a 'game_id' that 
+        will generally be different !
         """
 
-        self._pdn_game = max(1, int(id_game) if id_game.isdigit() else 1)
-        return self._search_game(self._pdn_game)
+        # Hint: if 'id_game' is empty, the game is appended. 'id_game' is calculated based 
+        # on the number of games already saved in the file (self._max_game), performing a full 
+        # scan only in open_data().
+        # .pdn files can only write to 'append'; intermediate games cannot be added.
+        # When specified, a check is made to ensure that '_pdn_game' is actually the last one; 
+        # otherwise, it is assigned to 'self._max_game + 1' !
+        if id_game and not self._in_restore:
+            # Import
+            self._pdn_game = max(1, int(id_game) if id_game.isdigit() else 1)
+            if self._pdn_game > self._max_games:
+                return False
+            
+            return self._search_game(self._pdn_game)
+        else:
+            # Export
+            # When writing, '_number_move' and '_player_turn' are only used for method 
+            # verification 'write_move()'
+            self._pdn_game = self._max_games
+            # In import a 'id_game' is always specified, in export only in the case of a restore.
+            if id_game:
+                self._number_move = self._max_number_move
+                self._player_turn = self._max_player_turn
+            else:
+                self._pdn_game += 1
+                self._number_move = 1
+                self._player_turn = EnumPlayersColor.P_LIGHT
+
+            # Hint: to avoid SEEK_END, the appended file is opened directly.
+            # ('a+' to also be able to read) !
+            # self._file.seek(0, io.SEEK_END)
+            return True
 
         # if not self._search_game(self._pdn_game):
         #     raise ValueError(f"Game {self._pdn_game} not present in file {self._pdn_name} !")
@@ -249,8 +303,10 @@ class PdnManager(DataInterface):
     def get_id_game(self)->str:
         return str(self._pdn_game)
 
-    def next_game(self)->str:
+    def next_game(self, cyclic:bool = False)->str:
         self._pdn_game += 1
+        if cyclic and self._pdn_game > self._max_games:
+            self._pdn_game = 1
         return str(self._pdn_game)
 
     # Returns tuples in (P_LIGHT, P_DARK) order, with engine and name
@@ -261,7 +317,8 @@ class PdnManager(DataInterface):
     def set_turn(self, number_move:int, player_turn:EnumPlayersColor):
         self._number_move = number_move
         self._player_turn = player_turn
-        self.lexer.seek_move(self._number_move, self._player_turn)
+        if not self.lexer.seek_move(self._number_move, self._player_turn):
+            raise ValueError(f"Class PdnManager, set_turn() : number_move / player_turn not found !")
 
     def next_turn(self):
         if self._player_turn == EnumPlayersColor.P_LIGHT:
@@ -276,14 +333,10 @@ class PdnManager(DataInterface):
     def next_move(self)->Optional[tuple[int, ...]]:
         move = self.lexer.read_move()
 
-        if move is None:
-            result = self.get_result()
-            lexer_result = self.lexer.get_result()
-            if result == EnumResult.R_NONE and lexer_result != '*':
-                raise ValueError(f"Move not present !")
-            # else:
-            #    print(f"Result = {result}")
-        else:
+        # Some .pdn files do not complete the game according to the rules and report the result 
+        # prematurely. If there are no further moves, and there is a valid result (excluding '*') 
+        # in the header or at the end of the move buffer, the game will still be forced to end.
+        if move is not None:
             # print(f"Move {self._number_move} : {self._player_turn} = {move}")
             self.next_turn()        
 
@@ -292,6 +345,8 @@ class PdnManager(DataInterface):
         return move
     
     def get_result(self)->EnumResult:
+        # The result is considered to be the one specified at the end of the moves if present 
+        # (excluding '*'), otherwise the one in the header
         result : str = self.lexer.get_result()
         if result == '' or result == '*':
             result = self._result
@@ -311,18 +366,59 @@ class PdnManager(DataInterface):
         
         return enum_result
 
-    def write_game(self, pk_game:str, pk_players:tuple[str,str,str,str]):
-        pass
+    def write_game(self, id_game:str, pk_players:tuple[str,str,str,str]):
+        if self._in_restore:
+            return
+
+        header : list[str] = []
+
+        event : str = ""
+        datetime : str = DatabaseManager.utc_sqlite_now()
+        light_engine, light_name, dark_engine, dark_name = pk_players
+        result : str = ""
+
+        header.append(f'[Event "{event}"]\n')
+        header.append(f'[Date "{datetime}"]\n')
+        header.append(f'[White "{light_name}"]\n')
+        header.append(f'[Black "{dark_name}"]\n')
+        header.append(f'[Result "{result}"]\n')
+
+        self._file.writelines(header)
 
     def write_move(
             self, 
             number_move:int, player_turn:EnumPlayersColor, state_move:StateMove,
             state_checkerboard:list[int] = None
         ):
-        pass
+        if self._number_move != number_move or self._player_turn != player_turn:
+            raise ValueError(f"Class PdnManager, write_move() : move number and turn mismatch !")
+
+        self._in_restore = False
+        move_str : str = ""
+        if player_turn == EnumPlayersColor.P_LIGHT:
+            separator = "\n" if number_move % 5 == 1 else " "
+            move_str += f"{separator}{number_move}."
+        move_str += " " + DatabaseManager.notation_move(state_move)
+
+        self._file.write(move_str)
+        # Increase move and turn number for subsequent checks
+        self.next_turn()
 
     def write_result(self, result:EnumResult):
-        pass
+        # If '_in_restore' is still present in 'write_result()', it means that no moves have 
+        # been written and therefore the result should not be written either.
+        # However, it must be reset to be able to write the header for the next game.
+        if self._in_restore:
+            self._in_restore = False
+            return
+
+        results : dict[EnumResult, str] = {
+            EnumResult.R_LIGHT : "1-0",
+            EnumResult.R_DARK : "0-1", 
+            EnumResult.R_PARITY : "1/2-1/2",
+            EnumResult.R_STAR : "*"
+        }
+        self._file.write(" " + results.get(result, "") + "\n\n")
 
     def _comment_exclusion(self) -> str:
         """
@@ -399,7 +495,28 @@ class PdnManager(DataInterface):
                     setattr(self, attr, metadata[key][0])
                     break
         
-    def _search_game(self, pdn_game:int)->bool:
+    def _search_max_games_moves(self):
+        # Count of matches present in the file
+        self._file.seek(0)
+        self._pdn_game = 999999
+        self._search_game(self._pdn_game, True)
+        self._max_games = self._counter_game
+
+        if self._max_games > 0:
+            # Count of moves in the last game
+            # self.set_turn(1, EnumPlayersColor.P_LIGHT)
+            while self.next_move():
+                pass
+
+            self._max_number_move = self._number_move
+            self._max_player_turn = self._player_turn
+            self._max_result = self.get_result()
+
+        # Restore file pointer for possible reading
+        self._file.seek(0)
+        self._reset_file()
+
+    def _search_game(self, pdn_game:int, all:bool = False)->bool:
         """
         Game recognition based on alternating header lines and moves.
         A non-empty line filtered by spaces at the ends and comments can be:
@@ -433,9 +550,11 @@ class PdnManager(DataInterface):
                     # If EOF header missing searched
                     if not self._raw_line:
                         self.lexer.set_length()
+                        # Checking only the '_counter_game' without the '_row_type' allows 
+                        # you to also find games with only the header and no moves yet
                         return (
                             True 
-                            if self._counter_game == self._pdn_game and self._row_type == EnumRowType.R_MOVE
+                            if self._counter_game == self._pdn_game #and self._row_type == EnumRowType.R_MOVE
                             else False
                         )
 
@@ -449,13 +568,15 @@ class PdnManager(DataInterface):
                         # header row
                         if self._row_type != EnumRowType.R_HEADER:
                             self._row_type = EnumRowType.R_HEADER
+                            if all:
+                                self.lexer.set_length()
                             self._counter_game += 1
                             # I exit the loop at the first line of the header of the 
                             # game following the one I'm looking for
                             if self._counter_game > self._pdn_game:
                                 break
 
-                        if self._counter_game == self._pdn_game:
+                        if self._counter_game == self._pdn_game and not all:
                             self._parser_headers()                            
                     else:
                         # line moves
@@ -466,7 +587,7 @@ class PdnManager(DataInterface):
                             # discard any moved lines
                             continue  
 
-                        if self._counter_game == self._pdn_game:
+                        if self._counter_game == self._pdn_game or all:
                             # append other lines moved in stream
                             self.lexer.set_moves(self._buf_line)
 

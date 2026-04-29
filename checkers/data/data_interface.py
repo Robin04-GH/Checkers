@@ -2,6 +2,7 @@ from typing import Optional
 from abc import ABC, abstractmethod
 from checkers.engine.game.pieces import EnumPlayersColor
 from checkers.engine.game.state import EnumResult, StateMove
+from typing import Protocol, runtime_checkable
 
 class DataInterface(ABC):
     """
@@ -10,7 +11,7 @@ class DataInterface(ABC):
     """
 
     @abstractmethod
-    def open_data(self, filename:str)->bool:
+    def open_data(self, filename:str, restore:str|None = None)->bool:
         """
         """        
         pass
@@ -40,7 +41,7 @@ class DataInterface(ABC):
         pass
 
     @abstractmethod
-    def next_game(self)->str:
+    def next_game(self, cyclic:bool = False)->str:
         """
         """        
         pass
@@ -80,7 +81,7 @@ class DataInterface(ABC):
         pass
 
     @abstractmethod
-    def write_game(self, pk_game:str, pk_players:tuple[str,str,str,str]):
+    def write_game(self, id_game:str, pk_players:tuple[str,str,str,str]):
         """
         """        
         pass
@@ -100,3 +101,9 @@ class DataInterface(ABC):
         """
         """        
         pass
+
+# Methods required for the DatabaseManager class only but not for the PdnManager
+@runtime_checkable
+class SupportsStats(Protocol):
+    def add_stats_player(self, player:EnumPlayersColor, add_stats:tuple[int, int, int]): ...
+    def get_stats_player(self, player:EnumPlayersColor)->tuple[int, int, int]: ...

@@ -131,7 +131,7 @@ class Cells:
         else:
             return False
 
-    # N.B.: with the exception you don't need to return a bool !
+    # Hint: with the exception you don't need to return a bool !
     @staticmethod
     def check_valid_cell(id_dark_cell:int):
         if not (0 <= id_dark_cell < MAX_DARK_CELLS):

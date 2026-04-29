@@ -43,7 +43,7 @@ plt.axis('off')     # Nasconde gli assi
 plt.show()
 """
 
-# N.B.: la visualizzazione corretta dei simboli Unicode dipende dal supporto
+# Hint: la visualizzazione corretta dei simboli Unicode dipende dal supporto
 # del terminale e della configurazione del sistema. Se si utilizza IDLE, potrebbe
 # essere necessario gestire specifici problemi di codifica (vedere forum Python) !2
 

@@ -11,7 +11,7 @@ def usage():
 	"""
 
 	# Specify the configuration file
-	# N.B.: Without pyenv use python3 !
+	# Hint: Without pyenv use python3 !
 	print('python checkers_main.py', '<configuration file>')
 	sys.exit(1)
 

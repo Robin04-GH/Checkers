@@ -51,6 +51,8 @@ class Checkerboard():
             "data" Unsupervised Learning (UL) data extraction
         """
 
+        print(f"\nWelcome in Checkerboard ({self.config.execution_mode}) ...")
+
         modes = {
             EnumExecutionMode.PLAY: self.play_mode,
             EnumExecutionMode.VIEW: self.play_mode,
@@ -77,11 +79,9 @@ class Checkerboard():
             resources.players()
             resources.reset_inference_cache()
             self.sender_new_game()
-
-            while not self.state.game_over and not self.state.exit:
-                self.run_turn(resources)
-
-            if not self.state.exit:
+            
+            self.run_turn_loop(resources)                
+            if not self.state.exit:            
                 resources.next_match()
 
     def sender_new_game(self):
@@ -90,18 +90,23 @@ class Checkerboard():
             for cell_piece in self.state.pieces.iter_players_pieces():
                 self.sender.players_pieces(cell_piece)
 
-    def run_turn(self, resources:Resources):
+    def run_turn_loop(self, resources:Resources):
         """
         Calculation of possible moves based on the rules
         """
 
-        with MovesPlayer(self.state) as moves_player:     
-            all_moves : set[Move] = moves_player.get_all_moves()
-            move : Optional[Move] = self._compute_move(all_moves, resources)
+        while True:
+            with MovesPlayer(self.state) as moves_player:     
+                all_moves : set[Move] = moves_player.get_all_moves()
+                move : Optional[Move] = self._compute_move(all_moves, resources)
 
-            if self.state.check_game_over(len(all_moves), self.config.parity_move):
-                resources.persist_result()
-            if self._execute_move(moves_player, move):
+                if self.state.check_game_over(len(all_moves), self.config.parity_move):
+                    resources.persist_result()
+                    resources.persist_stats()
+
+                if not self._execute_move(moves_player, move):
+                    break
+
                 # saving data to database
                 resources.persist_turn()
                 self.state.set_turn()
@@ -127,9 +132,11 @@ class Checkerboard():
             gen = self.move_sequence.run(moves_player, move, self.state.game_over)
             for step in gen:
                 if self.state.exit:
-                    break
+                    return False
+                
                 self.graph_output_channel.receiver.dispatcher(self.receiving)
-        return not self.state.exit
+
+        return not self.state.game_over
 
     def data_mode(self):
         self.resources.db_reader()

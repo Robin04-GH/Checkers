@@ -40,21 +40,13 @@
 #   Hint: delete option if normal game start !
 #   "<name_checkerboard> checkerboard state name
 
-# "history_database" : activation of historical game storage on database
-# 	Hint: if omitted, storing does not occur !
-#   "<name_database> database name for game to storage
+# "import_name" : resource name for data import (.db/.pdn)
 
-# "pk_game" : game identifier to view
-#   Hint: valid only in 'view' mode !
-#   "<pk_game> game identifier in the chosen database (primary key=datetime)
+# "import_game" : identifier of the first game to import (default = 1)
+#   Hint: it depends on the type of resource (order number for .pdn, order number 
+#   or better pk for .db) !
 
-# "import_pdn" : PDN filename from which to view the game
-#   Hint: valid only in 'view' mode !
-#   "<name_pdn> PDN filename for import/view
-
-# "pdn_game" : game identifier in pdn (first game unless specified)
-#   Hint: Valid only with' import_pdn' !
-#   String containing order number of the match where the 'view' from PDN begins
+# "export_name" : resource name for data export (.db/.pdn)
 
 # "timeout_selected" : timeout selected in msec for moves steps in view mode. 
 # Setting it to zero will make the timeout infinite; to continue, a keyboard (space) or 

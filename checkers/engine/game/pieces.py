@@ -42,18 +42,18 @@ class Pieces:
         else:
             return False
 
-    # N.B.: with the exception you don't need to return a bool !
+    # Hint: with the exception you don't need to return a bool !
     @staticmethod
     def check_valid_piece(id_piece:int):
         if not (1 <= abs(id_piece) <= MAX_KING):
             raise ValueError(f"Specified piece ID {id_piece} is out of bounds !")
 
-    # N.B.: with the exception you don't need to return a bool !
+    # Hint: with the exception you don't need to return a bool !
     def check_busy_cell(self, id_dark_cell:int):
         if id_dark_cell not in self._reverse_dict:
             raise KeyError(f"Cell {id_dark_cell} is empty !")
 
-    # N.B.: with the exception you don't need to return a bool !
+    # Hint: with the exception you don't need to return a bool !
     def check_empty_cell(self, id_dark_cell:int):
         if id_dark_cell in self._reverse_dict:
             raise KeyError(f"Cell {id_dark_cell} already contains a piece !")
