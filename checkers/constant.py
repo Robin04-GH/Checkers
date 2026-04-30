@@ -1,3 +1,6 @@
+# Version
+VERSION = '1.0.0'
+
 # tests
 CHECK_TREE = False
 

@@ -1,4 +1,5 @@
 from typing import Optional
+from checkers.constant import VERSION
 from checkers.config_manager import EnumExecutionMode, ConfigManager
 from checkers.channels.channel import EnumChannelProtocols, Channel, Gateway
 from checkers.channels.graph_input import ProtGraphInput
@@ -51,7 +52,8 @@ class Checkerboard():
             "data" Unsupervised Learning (UL) data extraction
         """
 
-        print(f"\nWelcome in Checkerboard ({self.config.execution_mode}) ...")
+        print(f"\nVersion : {VERSION}")
+        print(f"Welcome in Checkerboard ({self.config.execution_mode}) ...")
 
         modes = {
             EnumExecutionMode.PLAY: self.play_mode,

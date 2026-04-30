@@ -590,6 +590,16 @@ class DatabaseManager(DataInterface):
         self._state.player_turn = player_turn
 
         try:
+            # Check attendance for previous turn
+            if self._state.number_move == 1 and self._state.player_turn == EnumPlayersColor.P_LIGHT:
+                return 
+            
+            if player_turn == EnumPlayersColor.P_DARK:
+                player_turn = EnumPlayersColor.P_LIGHT
+            else:
+                number_move -= 1
+                player_turn = EnumPlayersColor.P_DARK
+
             self._cursor.execute("""
                 SELECT 1 FROM moves 
                 WHERE pk_game = ? AND number_move = ? AND player_turn = ?;
@@ -597,7 +607,7 @@ class DatabaseManager(DataInterface):
 
             found = self._cursor.fetchone() is not None
             if not found:
-                raise ValueError(f"Class DatabaseManager, set_turn() : number_move / player_turn not found !")
+                raise ValueError(f"Class DatabaseManager, set_turn() : previous number_move / player_turn not found !")
         except sqlite3.Error as e:
             print(f"Class DatabaseManager, set_turn(), SQLite error {e}")
             raise
