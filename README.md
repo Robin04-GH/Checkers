@@ -7,11 +7,15 @@ Educational project written in Python (3.13.2) with the main programming pattern
 - protocol
 - factory
 - dependency injection
+- list comprehension
+- slice assignment
+- generator expressions
+- context manager
 - event-driven programming
 - threading
 The libraries used to create the execution environment are in requirements.txt.
 
-It implements a desktop viewer for checkers games (Italian Federdama rules - link -) with moves
+It implements a desktop viewer for checkers games (Italian Federdama rules) with moves
 assisted by highlighting cells on the board.
 
 The application can be launched in the following modes ('mode' option):
@@ -21,7 +25,7 @@ virtual players ('classic'/'SL'/'RL' engine, but only in future updates)
 - 'scan' to quickly scan all games of a resource without graphics,
 useful for testing or importing
 - 'data' to launch an interactive console with automatic query generation
-to explore local database data.
+to explore local database data
 In the main folder, there are some configuration files (.ini) as demos.
 
 The project structure includes:
@@ -29,15 +33,12 @@ The project structure includes:
 1) Engine (main thread)
 Some classes formalize the basic concepts (Cells, Pieces, Move, State).
 Others implement the rules of checkers (Score, MoveRules, MovesPlayer).
-From the state of the board, all possible moves are examined according to the rules of the game,
-assigning them a score. Only one move among those with the highest score can be
-executed, highlighting for each step of the move the cells to which it is possible to move (stored
-in a tree structure with the Node base class).
+From the state of the board, all possible moves are examined according to the rules of the game, assigning them a score. Only one move among those with the highest score can be
+executed, highlighting for each step of the move the cells to which it is possible to move (stored in a tree structure with the Node base class).
 Checkerboard is the main class of the engine that orchestrates all the others.
 During execution, the console prints various information about the application's state.
 
-Communication between threads occurs through the formalization of channels, implemented with
-protocols that define a set of messages sent (sender) and received (receiver) on shared queues.
+Communication between threads occurs through the formalization of channels, implemented with protocols that define a set of messages sent (sender) and received (receiver) on shared queues.
 
 2) Graphics (secondary thread)
 Currently, the board graphics are implemented with pygame.
@@ -52,8 +53,7 @@ allows selection of selectable cells.
 - K_RETURN or left button held on the selected cell
 activates the selected cell when moved.
 - K_1, K_2, K_3, K_4 or mouse movement over the highlighted destination cells
-to select the destination cell for the current step, taking the 4 Cartesian quadrants as reference
-from the starting cell.
+to select the destination cell for the current step, taking the 4 Cartesian quadrants as reference from the starting cell.
 - K_ESCAPE or left button release
 validates the move if all possible steps are completed, or cancels the move.
 
@@ -80,11 +80,9 @@ This allows you to resume games (played or viewed) from where they were
 interrupted ('restore' option).
 
 3) Data
-Manages external resources in PDN (Portable Drafts Notation) format and local databases with SQlite,
-through which you can configure game imports and/or exports.
-An interactive reader with automatic query generation allows you to explore the data contained
-in the databases, with results printed to the console and/or file (/log folder).
-The /pdn folder contains an archive of Italian championship matches (Federdama -link-).
+Manages external resources in PDN (Portable Drafts Notation) format and local databases with SQlite, through which you can configure game imports and/or exports.
+An interactive reader with automatic query generation allows you to explore the data contained in the databases, with results printed to the console and/or file (/log folder).
+The /pdn folder contains an archive of Italian championship matches (Federdama).
 
 Link:
 
