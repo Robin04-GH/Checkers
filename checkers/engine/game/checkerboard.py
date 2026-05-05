@@ -53,7 +53,7 @@ class Checkerboard():
         """
 
         print(f"\nVersion : {VERSION}")
-        print(f"Welcome in Checkerboard ({self.config.execution_mode}) ...")
+        print(f"Welcome in Checkers ({self.config.execution_mode}) ...")
 
         modes = {
             EnumExecutionMode.PLAY: self.play_mode,

@@ -18,6 +18,8 @@ The libraries used to create the execution environment are in requirements.txt.
 It implements a desktop viewer for checkers games (Italian Federdama rules) with moves
 assisted by highlighting cells on the board.
 
+![Demo](docs/demo.gif)
+
 The application can be launched in the following modes ('mode' option):
 - 'play' to perform moves with real players ('player' engine) or
 virtual players ('classic'/'SL'/'RL' engine, but only in future updates)
